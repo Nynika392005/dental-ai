@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api } from '../../../lib/api';
 import { useAuthStore } from '../../../stores/authStore';
+import * as Speech from 'expo-speech';
+import { Audio } from 'expo-av';
 
 const QUICK_REPLIES = [
   "How do I brush properly?",
@@ -20,7 +22,7 @@ const QUICK_REPLIES = [
 ];
 
 export default function ActiveChatScreen() {
-  const { id } = useLocalSearchParams();
+  const { id, voice } = useLocalSearchParams();
   const isNew = id === 'new';
   const router = useRouter();
   
@@ -28,7 +30,33 @@ export default function ActiveChatScreen() {
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [fetchingHistory, setFetchingHistory] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const flatListRef = useRef<FlatList>(null);
+
+  const toggleVoice = async () => {
+    Speech.stop();
+    setIsListening(true);
+
+    // AI Speaks to guide you
+    const instruction = "I am ready. Please tap the microphone icon on your keyboard to tell me your question.";
+    speak(instruction);
+
+    // Show a helpful alert with instructions
+    Alert.alert(
+      "Voice Assistant",
+      "To ask YOUR specific question:\n\n1. Tap the text input box\n2. Tap the Microphone icon on your keyboard\n3. Speak and press Send\n\nDentAI will then speak the answer back to you!",
+      [{ text: "OK", onPress: () => setIsListening(false) }]
+    );
+  };
+
+  const speak = (text: string) => {
+    Speech.speak(text, {
+      language: 'en',
+      pitch: 1.0,
+      rate: 1.0,
+    });
+  };
 
   // Load existing messages if !isNew
   useEffect(() => {
@@ -169,6 +197,8 @@ export default function ActiveChatScreen() {
           }
         }
       }
+      // Speak the final response
+      speak(fullContent);
     } catch (e) {
       console.log('Send error', e);
       setMessages(prev => 
@@ -230,7 +260,16 @@ export default function ActiveChatScreen() {
       )}
       
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        {isListening && (
+          <View style={styles.listeningOverlay}>
+             <Icon name="microphone" size={48} color="#1A7FD4" />
+             <Text style={styles.listeningText}>Listening to your voice...</Text>
+          </View>
+        )}
         <View style={styles.inputContainer}>
+          <TouchableOpacity style={styles.voiceBtn} onPress={toggleVoice}>
+             <Icon name={isListening ? "microphone-off" : "microphone"} size={24} color={isListening ? "#DC2626" : "#64748B"} />
+          </TouchableOpacity>
           <TextInput
             style={styles.input}
             placeholder="Ask DentAI anything..."
@@ -301,6 +340,22 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     maxHeight: 100,
+  },
+  voiceBtn: {
+    marginRight: 8,
+    padding: 8,
+  },
+  listeningOverlay: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    padding: 20,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  listeningText: {
+    marginTop: 8,
+    color: '#1A7FD4',
+    fontWeight: 'bold',
   },
   sendBtn: {
     width: 48,

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
 
-const API_URL = 'http://172.20.10.4:8000'; // Pointing to local backend
+const API_URL = 'https://dental-ai-8qr1.onrender.com'; // Pointing to deployed backend
 
 export const api = axios.create({
   baseURL: API_URL,

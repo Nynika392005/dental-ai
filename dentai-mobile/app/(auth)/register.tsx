@@ -38,8 +38,13 @@ export default function RegisterScreen() {
         password
       });
       
-      Alert.alert("Success", "Account created! Please verify your email.", [
-        { text: "OK", onPress: () => router.push({ pathname: '/(auth)/verify', params: { email } }) }
+      // Auto-Login after registration
+      const loginRes = await api.post('/auth/login', { email, password });
+      const { access_token, user } = loginRes.data;
+
+      // We assume useAuthStore is available globally or we use the router
+      Alert.alert("Success", "Account created successfully!", [
+        { text: "Get Started", onPress: () => router.replace('/(tabs)') }
       ]);
     } catch (error: any) {
       let errorMessage = 'An error occurred';

@@ -37,6 +37,10 @@ app.include_router(ai_analysis.router)
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to DentAI API"}
+    return {"message": "Welcome to DentAI API", "status": "online"}
+
+@app.get("/test")
+async def test():
+    return {"message": "Server is reachable"}
 
 # Trigger reload 2

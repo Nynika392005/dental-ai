@@ -58,6 +58,16 @@ export default function ChatListScreen() {
           <Icon name="chat-sleep-outline" size={64} color="#CBD5E1" />
           <Text style={styles.emptyText}>No conversations yet</Text>
           <Text style={styles.emptySubtext}>Start asking DentAI about your oral health!</Text>
+
+          <View style={styles.suggestions}>
+            <Text style={styles.suggestionTitle}>Suggested Topics:</Text>
+            {['Tooth Sensitivity', 'Best Brushing Techniques', 'Wisdom Teeth Pain'].map(topic => (
+              <TouchableOpacity key={topic} style={styles.suggestionChip} onPress={() => router.push(`/(tabs)/chat/new?q=${encodeURIComponent(topic)}`)}>
+                <Text style={styles.suggestionText}>{topic}</Text>
+                <Icon name="arrow-right-thin" size={16} color="#1A7FD4" />
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       ) : (
         <FlatList
@@ -117,5 +127,19 @@ const styles = StyleSheet.create({
   chatDate: { fontSize: 12, color: '#64748B' },
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   emptyText: { fontSize: 18, fontWeight: 'bold', color: '#1E293B', marginTop: 16 },
-  emptySubtext: { fontSize: 14, color: '#64748B', textAlign: 'center', marginTop: 8 },
+  emptySubtext: { fontSize: 14, color: '#64748B', textAlign: 'center', marginTop: 8, marginBottom: 32 },
+  suggestions: { width: '100%', marginTop: 20 },
+  suggestionTitle: { fontSize: 14, fontWeight: 'bold', color: '#64748B', marginBottom: 12 },
+  suggestionChip: {
+    backgroundColor: '#fff',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0'
+  },
+  suggestionText: { color: '#1A7FD4', fontWeight: '500' },
 });

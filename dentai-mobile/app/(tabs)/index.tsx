@@ -42,6 +42,21 @@ export default function DashboardScreen() {
           <Text style={styles.name}>{user?.full_name || 'Patient'}</Text>
         </View>
 
+        {/* Health Score Card - UNIQUE FEATURE */}
+        <TouchableOpacity style={styles.healthScoreCard}>
+          <View style={styles.scoreInfo}>
+            <Text style={styles.scoreTitle}>Oral Health Score</Text>
+            <Text style={styles.scoreSubtitle}>Based on your last checkup</Text>
+            <View style={styles.scoreBadge}>
+              <Text style={styles.scoreValue}>85</Text>
+              <Text style={styles.scoreTotal}>/100</Text>
+            </View>
+          </View>
+          <View style={styles.scoreGraph}>
+             <Icon name="chart-donut" size={80} color="#1A7FD4" />
+          </View>
+        </TouchableOpacity>
+
         {/* Quick Actions */}
         <View style={styles.actionsGrid}>
           <TouchableOpacity style={[styles.actionCard, { backgroundColor: '#E0F2FE' }]} onPress={() => router.push('/(tabs)/chat')}>
@@ -61,6 +76,48 @@ export default function DashboardScreen() {
             <Text style={styles.actionText}>Learn</Text>
           </TouchableOpacity>
         </View>
+
+        {/* SMART AI SCAN - NEW FEATURE */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Smart AI Tools</Text>
+          <Icon name="auto-fix" size={20} color="#1A7FD4" />
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.toolScroll}>
+          <TouchableOpacity style={styles.toolCard} onPress={() => router.push('/analysis/scan?type=medicine')}>
+            <View style={[styles.toolIcon, { backgroundColor: '#F0FDFA' }]}>
+              <Icon name="pill" size={24} color="#0D9488" />
+            </View>
+            <Text style={styles.toolLabel}>Scan Meds</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.toolCard} onPress={() => router.push('/analysis/scan?type=tooth')}>
+            <View style={[styles.toolIcon, { backgroundColor: '#F5F3FF' }]}>
+              <Icon name="tooth-outline" size={24} color="#7C3AED" />
+            </View>
+            <Text style={styles.toolLabel}>Tooth Check</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.toolCard} onPress={() => router.push('/analysis/scan?type=food')}>
+            <View style={[styles.toolIcon, { backgroundColor: '#FFF7ED' }]}>
+              <Icon name="food-apple-outline" size={24} color="#EA580C" />
+            </View>
+            <Text style={styles.toolLabel}>Food Impact</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.toolCard} onPress={() => router.push('/analysis/scan?type=habit')}>
+            <View style={[styles.toolIcon, { backgroundColor: '#FDF2F8' }]}>
+              <Icon name="shield-search" size={24} color="#DB2777" />
+            </View>
+            <Text style={styles.toolLabel}>Habit Sentinel</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.toolCard} onPress={() => router.push('/(tabs)/chat/new?voice=true')}>
+            <View style={[styles.toolIcon, { backgroundColor: '#EFF6FF' }]}>
+              <Icon name="microphone" size={24} color="#2563EB" />
+            </View>
+            <Text style={styles.toolLabel}>Voice Assist</Text>
+          </TouchableOpacity>
+        </ScrollView>
 
         {/* Daily Tip */}
         <View style={styles.tipSection}>
@@ -89,6 +146,27 @@ const styles = StyleSheet.create({
   header: { marginBottom: 24 },
   greeting: { fontSize: 16, color: '#64748B' },
   name: { fontSize: 28, fontWeight: 'bold', color: '#1E293B' },
+  healthScoreCard: {
+    backgroundColor: '#1A7FD4',
+    borderRadius: 20,
+    padding: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 32,
+    shadowColor: '#1A7FD4',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  scoreInfo: { flex: 1 },
+  scoreTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', opacity: 0.9 },
+  scoreSubtitle: { color: '#fff', fontSize: 12, opacity: 0.7, marginBottom: 12 },
+  scoreBadge: { flexDirection: 'row', alignItems: 'baseline' },
+  scoreValue: { color: '#fff', fontSize: 36, fontWeight: 'bold' },
+  scoreTotal: { color: '#fff', fontSize: 16, opacity: 0.8 },
+  scoreGraph: { marginLeft: 16, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 50, padding: 8 },
   actionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -112,6 +190,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1E293B',
   },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, marginTop: 16 },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#1E293B', marginRight: 8 },
+  toolScroll: { marginBottom: 32 },
+  toolCard: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 16,
+    marginRight: 12,
+    alignItems: 'center',
+    width: 100,
+    borderWidth: 1,
+    borderColor: '#E2E8F0'
+  },
+  toolIcon: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+  toolLabel: { fontSize: 12, fontWeight: '600', color: '#475569', textAlign: 'center' },
   tipSection: {
     marginTop: 8,
   },
