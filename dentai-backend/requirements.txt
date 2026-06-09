@@ -15,3 +15,4 @@ celery
 cloudinary
 python-multipart
 httpx
+aiosqlite
