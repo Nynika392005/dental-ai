@@ -34,6 +34,15 @@ async def get_dentists(clinic_id: uuid.UUID, db: AsyncSession = Depends(get_db))
         })
     return dentists
 
+@router.get("/slots")
+async def get_available_slots(dentist_id: uuid.UUID, date: str):
+    # For now, return some mock slots. In a real app, you'd check the database
+    # and existing appointments.
+    return [
+        "09:00", "09:30", "10:00", "10:30", "11:00",
+        "14:00", "14:30", "15:00", "15:30", "16:00"
+    ]
+
 @router.post("/", response_model=AppointmentResponse)
 async def create_appointment(
     req: AppointmentCreate,

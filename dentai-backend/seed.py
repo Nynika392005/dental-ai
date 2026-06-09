@@ -104,6 +104,60 @@ async def seed_data():
                     author="Emergency Dentist",
                     is_published=True,
                     read_time_minutes=4
+                ),
+                Article(
+                    title="Understanding Root Canal Treatment",
+                    slug="root-canal-explained",
+                    content="A root canal is a treatment used to repair and save a tooth that is badly decayed or becomes infected. During a root canal procedure, the nerve and pulp are removed and the inside of the tooth is cleaned and sealed.",
+                    category=ArticleCategory.procedures,
+                    author="Dr. Endodontic",
+                    is_published=True,
+                    read_time_minutes=6
+                ),
+                Article(
+                    title="Professional Teeth Whitening: What to Expect",
+                    slug="teeth-whitening-guide",
+                    content="Professional teeth whitening is a safe and effective way to brighten your smile. Your dentist will apply a bleaching agent to your teeth, which is then activated by a special light.",
+                    category=ArticleCategory.procedures,
+                    author="Dr. Cosmetic",
+                    is_published=True,
+                    read_time_minutes=4
+                ),
+                Article(
+                    title="Dental Crowns: Restoring Your Tooth's Strength",
+                    slug="dental-crowns-guide",
+                    content="A dental crown is a tooth-shaped 'cap' that is placed over a tooth to cover it, restoring its shape, size, strength, and appearance. They are often needed when a tooth is cracked, decayed, or has had a root canal.",
+                    category=ArticleCategory.procedures,
+                    author="Dr. Restorative",
+                    is_published=True,
+                    read_time_minutes=5
+                ),
+                Article(
+                    title="Braces and Clear Aligners: The Path to Straighter Teeth",
+                    slug="braces-orthodontics-guide",
+                    content="Orthodontic treatment uses braces or aligners to move teeth that are crooked or don't fit together right. By fixing these problems, orthodontics can also help keep your mouth healthy.",
+                    category=ArticleCategory.procedures,
+                    author="Dr. Ortho",
+                    is_published=True,
+                    read_time_minutes=7
+                ),
+                Article(
+                    title="Dental Implants: The Permanent Solution for Missing Teeth",
+                    slug="dental-implants-guide",
+                    content="Dental implants are replacement tooth roots. Implants provide a strong foundation for fixed (permanent) or removable replacement teeth that are made to match your natural teeth.",
+                    category=ArticleCategory.procedures,
+                    author="Dr. Implant",
+                    is_published=True,
+                    read_time_minutes=8
+                ),
+                Article(
+                    title="Tooth Extraction: Why and How It's Done",
+                    slug="tooth-extraction-guide",
+                    content="While the goal is always to save your natural teeth, sometimes an extraction is necessary due to severe decay, infection, or crowding. Your dentist will ensure you are comfortable throughout the procedure.",
+                    category=ArticleCategory.procedures,
+                    author="Dr. Surgeon",
+                    is_published=True,
+                    read_time_minutes=5
                 )
             ]
             session.add_all(articles)
