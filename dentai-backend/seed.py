@@ -159,16 +159,8 @@ async def seed_mongodb_data(db):
     print("Database seeding process completed!")
 
 async def main():
-    parts = settings.MONGODB_URL.split("://")
-    db_name = "dentai"
-    if len(parts) > 1:
-        path_part = parts[1].split("/")[-1]
-        name = path_part.split("?")[0]
-        if name:
-            db_name = name
-            
-    client = AsyncIOMotorClient(settings.MONGODB_URL)
-    db = client[db_name]
+    from app.core.database import check_db_connection
+    db = await check_db_connection()
     
     # Create indexes
     await db["users"].create_index("email", unique=True)
