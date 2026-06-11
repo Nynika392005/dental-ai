@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.models.symptom_checker import SymptomAssessment
 from app.models.user import User
@@ -13,7 +12,7 @@ router = APIRouter(prefix="/symptoms", tags=["symptoms"])
 async def check_symptoms(
     req: SymptomAssessmentCreate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db = Depends(get_db)
 ):
     # Call AI service for assessment
     analysis = await analyze_symptoms(req.symptoms)
@@ -24,8 +23,12 @@ async def check_symptoms(
         ai_assessment=analysis.get("ai_assessment", "Please consult a dentist."),
         urgency_level=analysis.get("urgency_level", "monitor")
     )
-    db.add(assessment)
-    await db.commit()
-    await db.refresh(assessment)
+    await db["symptom_assessments"].insert_one(assessment.to_dict())
     
-    return assessment
+    return {
+        "id": assessment.id,
+        "symptoms": assessment.symptoms,
+        "ai_assessment": assessment.ai_assessment,
+        "urgency_level": assessment.urgency_level.value,
+        "created_at": assessment.created_at
+    }

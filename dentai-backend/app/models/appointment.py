@@ -1,10 +1,6 @@
-from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, Enum, Date, Time
-from sqlalchemy import Uuid as UUID
-from sqlalchemy.orm import relationship
 import uuid
 import enum
 from datetime import datetime
-from app.core.database import Base
 
 class AppointmentStatus(str, enum.Enum):
     scheduled = "scheduled"
@@ -12,25 +8,70 @@ class AppointmentStatus(str, enum.Enum):
     completed = "completed"
     cancelled = "cancelled"
 
-class Appointment(Base):
-    __tablename__ = "appointments"
+class Appointment:
+    def __init__(self, **kwargs):
+        raw_id = kwargs.get("id") or kwargs.get("_id")
+        if isinstance(raw_id, str):
+            try:
+                self.id = uuid.UUID(raw_id)
+            except ValueError:
+                self.id = raw_id
+        elif isinstance(raw_id, uuid.UUID):
+            self.id = raw_id
+        else:
+            self.id = uuid.uuid4()
+            
+        self.patient_id = kwargs.get("patient_id")
+        if isinstance(self.patient_id, str):
+            try:
+                self.patient_id = uuid.UUID(self.patient_id)
+            except ValueError:
+                pass
+                
+        self.dentist_id = kwargs.get("dentist_id")
+        if isinstance(self.dentist_id, str):
+            try:
+                self.dentist_id = uuid.UUID(self.dentist_id)
+            except ValueError:
+                pass
+                
+        self.clinic_id = kwargs.get("clinic_id")
+        if isinstance(self.clinic_id, str):
+            try:
+                self.clinic_id = uuid.UUID(self.clinic_id)
+            except ValueError:
+                pass
+                
+        self.scheduled_at = kwargs.get("scheduled_at")
+        if isinstance(self.scheduled_at, str):
+            try:
+                self.scheduled_at = datetime.fromisoformat(self.scheduled_at)
+            except ValueError:
+                pass
+                
+        self.reason = kwargs.get("reason")
+        
+        status_val = kwargs.get("status", AppointmentStatus.scheduled)
+        if isinstance(status_val, enum.Enum):
+            self.status = status_val
+        else:
+            try:
+                self.status = AppointmentStatus(status_val)
+            except ValueError:
+                self.status = AppointmentStatus.scheduled
+                
+        self.notes = kwargs.get("notes")
+        self.created_at = kwargs.get("created_at") or datetime.utcnow()
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    patient_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    dentist_id = Column(UUID(as_uuid=True), ForeignKey("dentists.id"), nullable=False)
-    clinic_id = Column(UUID(as_uuid=True), ForeignKey("clinics.id"), nullable=False)
-    scheduled_at = Column(DateTime(timezone=True), nullable=False)
-    reason = Column(String)
-    status = Column(Enum(AppointmentStatus), default=AppointmentStatus.scheduled)
-    notes = Column(String)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-class TimeSlot(Base):
-    __tablename__ = "time_slots"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    dentist_id = Column(UUID(as_uuid=True), ForeignKey("dentists.id"), nullable=False)
-    slot_date = Column(Date, nullable=False)
-    start_time = Column(Time, nullable=False)
-    end_time = Column(Time, nullable=False)
-    is_blocked = Column(Boolean, default=False)
+    def to_dict(self):
+        return {
+            "_id": str(self.id),
+            "patient_id": str(self.patient_id),
+            "dentist_id": str(self.dentist_id),
+            "clinic_id": str(self.clinic_id),
+            "scheduled_at": self.scheduled_at.isoformat() if isinstance(self.scheduled_at, datetime) else self.scheduled_at,
+            "reason": self.reason,
+            "status": self.status.value if isinstance(self.status, enum.Enum) else self.status,
+            "notes": self.notes,
+            "created_at": self.created_at
+        }

@@ -1,15 +1,13 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 from app.core.database import get_db
 from app.core.config import settings
 from app.models.user import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
+async def get_current_user(token: str = Depends(oauth2_scheme), db = Depends(get_db)) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -23,15 +21,15 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
     except JWTError:
         raise credentials_exception
         
-    result = await db.execute(select(User).where(User.email == email))
-    user = result.scalars().first()
-    if user is None:
+    user_doc = await db["users"].find_one({"email": email})
+    if user_doc is None:
         raise credentials_exception
-    return user
+    return User(**user_doc)
 
 def require_role(roles: list[str]):
     async def role_checker(current_user: User = Depends(get_current_user)):
-        if current_user.role.value not in roles:
+        role_str = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+        if role_str not in roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Operation not permitted"

@@ -3,6 +3,7 @@ from typing import List
 
 class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite+aiosqlite:///./dentai.db"
+    MONGODB_URL: str = "mongodb://localhost:27017/dentai"
     REDIS_URL: str = "redis://localhost:6379/0"
     SECRET_KEY: str = "change-this-in-production"
     ALGORITHM: str = "HS256"

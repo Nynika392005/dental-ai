@@ -2,15 +2,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.core.config import settings
-from app.core.database import engine, Base
-from app.models import user, chat, education, appointment, health_record, symptom_checker
 from app.routers import auth, chat as chat_router, education as education_router, appointments, symptom_checker as symptom_router, ai_analysis
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create SQLite mock database tables on startup
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Lifespan operations (MongoDB Atlas needs no table creation)
     yield
 
 app = FastAPI(
@@ -42,5 +38,3 @@ async def root():
 @app.get("/test")
 async def test():
     return {"message": "Server is reachable"}
-
-# Trigger reload 2

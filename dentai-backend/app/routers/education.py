@@ -1,6 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 from app.core.database import get_db
 from app.models.education import Article, Bookmark, OralHealthTip
 from app.models.user import User
@@ -12,64 +10,116 @@ import random
 router = APIRouter(prefix="/education", tags=["education"])
 
 @router.get("/articles", response_model=list[ArticleResponse])
-async def get_articles(category: str = None, db: AsyncSession = Depends(get_db)):
-    query = select(Article).where(Article.is_published == True)
+async def get_articles(category: str = None, db = Depends(get_db)):
+    filter_query = {"is_published": True}
     if category:
-        query = query.where(Article.category == category)
-    result = await db.execute(query.order_by(Article.created_at.desc()))
-    return result.scalars().all()
+        filter_query["category"] = category
+        
+    art_cursor = db["articles"].find(filter_query).sort("created_at", -1)
+    articles = []
+    async for art_doc in art_cursor:
+        articles.append({
+            "id": art_doc["_id"],
+            "title": art_doc["title"],
+            "slug": art_doc["slug"],
+            "content": art_doc["content"],
+            "category": art_doc["category"],
+            "thumbnail_url": art_doc.get("thumbnail_url"),
+            "read_time_minutes": art_doc.get("read_time_minutes", 5),
+            "author": art_doc.get("author"),
+            "is_published": art_doc["is_published"],
+            "created_at": art_doc["created_at"]
+        })
+    return articles
 
 @router.get("/articles/{identifier}", response_model=ArticleResponse)
-async def get_article(identifier: str, db: AsyncSession = Depends(get_db)):
+async def get_article(identifier: str, db = Depends(get_db)):
     # Try searching by UUID first
     try:
         val = uuid.UUID(identifier)
-        query = select(Article).where(Article.id == val)
+        query = {"_id": str(val)}
     except ValueError:
         # If not a UUID, search by slug
-        query = select(Article).where(Article.slug == identifier)
+        query = {"slug": identifier}
         
-    result = await db.execute(query)
-    article = result.scalars().first()
-    if not article:
+    art_doc = await db["articles"].find_one(query)
+    if not art_doc:
         raise HTTPException(status_code=404, detail="Article not found")
-    return article
+        
+    return {
+        "id": art_doc["_id"],
+        "title": art_doc["title"],
+        "slug": art_doc["slug"],
+        "content": art_doc["content"],
+        "category": art_doc["category"],
+        "thumbnail_url": art_doc.get("thumbnail_url"),
+        "read_time_minutes": art_doc.get("read_time_minutes", 5),
+        "author": art_doc.get("author"),
+        "is_published": art_doc["is_published"],
+        "created_at": art_doc["created_at"]
+    }
 
 @router.post("/bookmarks/{article_id}")
 async def toggle_bookmark(
     article_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db = Depends(get_db)
 ):
-    result = await db.execute(
-        select(Bookmark).where(Bookmark.user_id == current_user.id, Bookmark.article_id == article_id)
-    )
-    bookmark = result.scalars().first()
+    query = {
+        "user_id": str(current_user.id),
+        "article_id": str(article_id)
+    }
+    bookmark = await db["bookmarks"].find_one(query)
     
     if bookmark:
-        await db.delete(bookmark)
-        await db.commit()
+        await db["bookmarks"].delete_one(query)
         return {"message": "Bookmark removed"}
     else:
         new_bookmark = Bookmark(user_id=current_user.id, article_id=article_id)
-        db.add(new_bookmark)
-        await db.commit()
+        await db["bookmarks"].insert_one(new_bookmark.to_dict())
         return {"message": "Bookmark added"}
 
 @router.get("/bookmarks", response_model=list[ArticleResponse])
 async def get_bookmarks(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db = Depends(get_db)
 ):
-    result = await db.execute(
-        select(Article).join(Bookmark).where(Bookmark.user_id == current_user.id)
-    )
-    return result.scalars().all()
+    bm_cursor = db["bookmarks"].find({"user_id": str(current_user.id)})
+    article_ids = []
+    async for bm_doc in bm_cursor:
+        article_ids.append(bm_doc["article_id"])
+        
+    if not article_ids:
+        return []
+        
+    art_cursor = db["articles"].find({"_id": {"$in": article_ids}})
+    articles = []
+    async for art_doc in art_cursor:
+        articles.append({
+            "id": art_doc["_id"],
+            "title": art_doc["title"],
+            "slug": art_doc["slug"],
+            "content": art_doc["content"],
+            "category": art_doc["category"],
+            "thumbnail_url": art_doc.get("thumbnail_url"),
+            "read_time_minutes": art_doc.get("read_time_minutes", 5),
+            "author": art_doc.get("author"),
+            "is_published": art_doc["is_published"],
+            "created_at": art_doc["created_at"]
+        })
+    return articles
 
 @router.get("/daily-tip", response_model=OralHealthTipResponse)
-async def get_daily_tip(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(OralHealthTip))
-    tips = result.scalars().all()
+async def get_daily_tip(db = Depends(get_db)):
+    tip_cursor = db["oral_health_tips"].find({})
+    tips = []
+    async for tip_doc in tip_cursor:
+        tips.append({
+            "id": tip_doc["_id"],
+            "tip_text": tip_doc["tip_text"],
+            "category": tip_doc.get("category")
+        })
+        
     if not tips:
         raise HTTPException(status_code=404, detail="No tips found")
     return random.choice(tips)

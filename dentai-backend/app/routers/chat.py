@@ -1,8 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.models.chat import Conversation, Message
 from app.models.user import User
@@ -10,6 +7,7 @@ from app.schemas.chat import MessageCreate, ConversationResponse
 from app.dependencies import get_current_user
 from app.services.ai_service import stream_chat_response
 import uuid
+from datetime import datetime
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -17,61 +15,64 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 async def send_message(
     req: MessageCreate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db = Depends(get_db)
 ):
     conv_id = req.conversation_id
     if not conv_id:
-        new_conv = Conversation(user_id=current_user.id, title=req.message[:50])
-        db.add(new_conv)
-        await db.flush()
-        conv_id = new_conv.id
-    
+        conv_id = uuid.uuid4()
+        new_conv = Conversation(
+            id=conv_id,
+            user_id=current_user.id,
+            title=req.message[:50]
+        )
+        await db["conversations"].insert_one(new_conv.to_dict())
+    else:
+        # Verify conversation exists and belongs to user
+        conv_doc = await db["conversations"].find_one({"_id": str(conv_id), "user_id": str(current_user.id)})
+        if not conv_doc:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+            
     # Save user message
     user_msg = Message(
         conversation_id=conv_id,
         role="user",
         content=req.message
     )
-    db.add(user_msg)
-    await db.commit()
+    await db["messages"].insert_one(user_msg.to_dict())
     
-    # Fetch history
-    result = await db.execute(
-        select(Message)
-        .where(Message.conversation_id == conv_id)
-        .order_by(Message.created_at.asc())
-        .limit(20)
-    )
-    history = result.scalars().all()
-    
+    # Fetch history of messages for this conversation (up to 20)
+    msg_cursor = db["messages"].find({"conversation_id": str(conv_id)}).sort("created_at", 1).limit(20)
+    history = []
+    async for msg_doc in msg_cursor:
+        history.append(Message(**msg_doc))
+        
     # Stream AI response
     async def generator():
         import json
         yield f"data: {json.dumps({'conversation_id': str(conv_id)})}\n\n"
         
         full_response = ""
-        async for chunk in stream_chat_response(req.message, history[:-1]): # Exclude the user message we just saved from history as it's passed separately
-            # Parse chunk if it's not [DONE] and build full response to save
+        # Exclude the user message we just saved from history as it's passed separately
+        async for chunk in stream_chat_response(req.message, history[:-1]): 
             if "data: [DONE]" not in chunk:
                 try:
                     data = json.loads(chunk.replace("data: ", ""))
                     if "token" in data:
                         full_response += data["token"]
+                    elif "content" in data:
+                        full_response += data["content"]
                 except:
                     pass
             yield chunk
             
-        # Save assistant message using a new session to prevent "session is closed" errors
+        # Save assistant message
         if full_response:
-            from app.core.database import AsyncSessionLocal
-            async with AsyncSessionLocal() as session:
-                ai_msg = Message(
-                    conversation_id=conv_id,
-                    role="assistant",
-                    content=full_response
-                )
-                session.add(ai_msg)
-                await session.commit()
+            ai_msg = Message(
+                conversation_id=conv_id,
+                role="assistant",
+                content=full_response
+            )
+            await db["messages"].insert_one(ai_msg.to_dict())
             
     headers = {
         "X-Conversation-Id": str(conv_id),
@@ -82,28 +83,60 @@ async def send_message(
 @router.get("/conversations", response_model=list[ConversationResponse])
 async def get_conversations(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db = Depends(get_db)
 ):
-    result = await db.execute(
-        select(Conversation)
-        .options(selectinload(Conversation.messages))
-        .where(Conversation.user_id == current_user.id, Conversation.is_deleted == False)
-        .order_by(Conversation.created_at.desc())
-    )
-    return result.scalars().all()
+    conv_cursor = db["conversations"].find({
+        "user_id": str(current_user.id),
+        "is_deleted": False
+    }).sort("created_at", -1)
+    
+    conversations = []
+    async for conv_doc in conv_cursor:
+        # Fetch messages for this conversation
+        msg_cursor = db["messages"].find({"conversation_id": conv_doc["_id"]}).sort("created_at", 1)
+        messages = []
+        async for msg_doc in msg_cursor:
+            messages.append({
+                "id": msg_doc["_id"],
+                "role": msg_doc["role"],
+                "content": msg_doc["content"],
+                "created_at": msg_doc["created_at"]
+            })
+        conversations.append({
+            "id": conv_doc["_id"],
+            "title": conv_doc.get("title", "New Conversation"),
+            "created_at": conv_doc["created_at"],
+            "messages": messages
+        })
+    return conversations
 
 @router.get("/conversations/{conversation_id}", response_model=ConversationResponse)
 async def get_conversation(
     conversation_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db = Depends(get_db)
 ):
-    result = await db.execute(
-        select(Conversation)
-        .options(selectinload(Conversation.messages))
-        .where(Conversation.id == conversation_id, Conversation.user_id == current_user.id, Conversation.is_deleted == False)
-    )
-    conversation = result.scalars().first()
-    if not conversation:
+    conv_doc = await db["conversations"].find_one({
+        "_id": str(conversation_id),
+        "user_id": str(current_user.id),
+        "is_deleted": False
+    })
+    if not conv_doc:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    return conversation
+        
+    msg_cursor = db["messages"].find({"conversation_id": str(conversation_id)}).sort("created_at", 1)
+    messages = []
+    async for msg_doc in msg_cursor:
+        messages.append({
+            "id": msg_doc["_id"],
+            "role": msg_doc["role"],
+            "content": msg_doc["content"],
+            "created_at": msg_doc["created_at"]
+        })
+        
+    return {
+        "id": conv_doc["_id"],
+        "title": conv_doc.get("title", "New Conversation"),
+        "created_at": conv_doc["created_at"],
+        "messages": messages
+    }
