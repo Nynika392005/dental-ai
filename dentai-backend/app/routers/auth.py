@@ -36,7 +36,15 @@ async def register_user(user_in: UserCreate, db = Depends(get_db)):
     )
     
     await db["users"].insert_one(new_user.to_dict())
-    return new_user
+    return {
+        "id": new_user.id,
+        "full_name": new_user.full_name,
+        "email": new_user.email,
+        "phone": new_user.phone,
+        "role": new_user.role.value if hasattr(new_user.role, "value") else new_user.role,
+        "is_verified": new_user.is_verified,
+        "created_at": new_user.created_at,
+    }
 
 @router.post("/login", response_model=Token)
 async def login(login_data: LoginRequest, db = Depends(get_db)):
@@ -55,7 +63,15 @@ async def login(login_data: LoginRequest, db = Depends(get_db)):
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user)):
-    return current_user
+    return {
+        "id": current_user.id,
+        "full_name": current_user.full_name,
+        "email": current_user.email,
+        "phone": current_user.phone,
+        "role": current_user.role.value if hasattr(current_user.role, "value") else current_user.role,
+        "is_verified": current_user.is_verified,
+        "created_at": current_user.created_at,
+    }
 
 @router.get("/init-db")
 async def init_db(db = Depends(get_db)):
