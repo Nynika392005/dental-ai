@@ -37,4 +37,5 @@ async def root():
 
 @app.get("/test")
 async def test():
-    return {"message": "Server is reachable"}
+    return {"message": "Server is reachable", "version": "fallback_v1"}
+
