@@ -1,5 +1,5 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from google import genai
+from google.genai import types
 from app.core.config import settings
 from dotenv import load_dotenv
 import os
@@ -9,9 +9,9 @@ import re
 
 load_dotenv()
 
-def get_chat_model(model_name="gemini-1.5-flash"):
+def get_client():
     api_key = os.getenv("GOOGLE_API_KEY") or settings.GOOGLE_API_KEY
-    return ChatGoogleGenerativeAI(model=model_name, google_api_key=api_key, temperature=0.7)
+    return genai.Client(api_key=api_key)
 
 def extract_json(text):
     try:
@@ -25,12 +25,20 @@ async def analyze_image_task(image_base64: str, task_type: str) -> dict:
     t_type = str(task_type).strip().lower()
 
     try:
-        model = get_chat_model("gemini-1.5-flash")
-        prompt = f"Analyze this {t_type} image for dental health. Return strict JSON."
-        content = [{"type": "text", "text": prompt}, {"type": "image_url", "image_url": f"data:image/jpeg;base64,{image_base64}"}]
-        response = await model.ainvoke([HumanMessage(content=content)])
-        data = extract_json(str(response.content))
-        if data: return data
+        client = get_client()
+        prompt = f"Analyze this {t_type} image for dental health. Return strict JSON only, no explanation."
+        import base64
+        image_bytes = base64.b64decode(image_base64)
+        response = client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=[
+                types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
+                prompt
+            ]
+        )
+        data = extract_json(response.text)
+        if data:
+            return data
     except Exception as e:
         print(f">>> AI Vision Error: {e}")
 
@@ -56,15 +64,16 @@ async def analyze_image_task(image_base64: str, task_type: str) -> dict:
     return random.choice(scenarios.get(t_type, [{"error": "Unknown type"}]))
 
 async def stream_chat_response(message: str, history: list):
-    try:
-        api_key = os.getenv("GOOGLE_API_KEY") or settings.GOOGLE_API_KEY
-        if not api_key:
-            print(">>> Chat Error: GOOGLE_API_KEY is not set!")
-            yield f"data: {json.dumps({'token': 'Configuration error: AI service is not configured. Please set GOOGLE_API_KEY in environment variables.'})}\n\n"
-            yield "data: [DONE]\n\n"
-            return
+    api_key = os.getenv("GOOGLE_API_KEY") or settings.GOOGLE_API_KEY
+    if not api_key:
+        print(">>> Chat Error: GOOGLE_API_KEY is not set!")
+        yield f"data: {json.dumps({'token': 'Configuration error: GOOGLE_API_KEY is not set.'})}\n\n"
+        yield "data: [DONE]\n\n"
+        return
 
-        model = get_chat_model("gemini-1.5-flash")
+    try:
+        client = get_client()
+
         system_prompt = (
             "You are DentAI, a knowledgeable and friendly dental health assistant. "
             "You help patients and dentists with questions about oral hygiene, dental procedures, "
@@ -73,44 +82,58 @@ async def stream_chat_response(message: str, history: list):
             "Always recommend consulting a licensed dentist for diagnosis or treatment. "
             "Be concise but thorough. Never refuse dental health questions."
         )
-        messages = [SystemMessage(content=system_prompt)]
 
-        # Include conversation history for context
+        # Build conversation history
+        contents = []
         for msg in history:
             role = msg.role if hasattr(msg, 'role') else msg.get('role', 'user')
             content = msg.content if hasattr(msg, 'content') else msg.get('content', '')
-            if role == 'user':
-                messages.append(HumanMessage(content=content))
-            elif role == 'assistant':
-                messages.append(AIMessage(content=content))
+            # google-genai uses 'user' and 'model' roles
+            genai_role = "model" if role == "assistant" else "user"
+            contents.append(types.Content(role=genai_role, parts=[types.Part(text=content)]))
 
-        messages.append(HumanMessage(content=message))
+        # Add current message
+        contents.append(types.Content(role="user", parts=[types.Part(text=message)]))
 
-        async for chunk in model.astream(messages):
-            yield f"data: {json.dumps({'token': chunk.content})}\n\n"
+        full_response = ""
+        for chunk in client.models.generate_content_stream(
+            model="gemini-1.5-flash",
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                temperature=0.7,
+            )
+        ):
+            if chunk.text:
+                full_response += chunk.text
+                yield f"data: {json.dumps({'token': chunk.text})}\n\n"
+
         yield "data: [DONE]\n\n"
+
     except Exception as e:
-        print(f">>> Chat Error (full): {type(e).__name__}: {e}")
+        print(f">>> Chat Error: {type(e).__name__}: {e}")
         yield f"data: {json.dumps({'token': f'AI service error: {str(e)}'})}\n\n"
         yield "data: [DONE]\n\n"
 
 async def analyze_symptoms(symptoms: list[str]) -> dict:
     try:
-        model = get_chat_model("gemini-1.5-flash")
+        client = get_client()
         symptoms_text = ", ".join(symptoms)
         prompt = (
             f"A dental patient reports the following symptoms: {symptoms_text}. "
-            "As a dental AI assistant, provide: "
-            "1. A brief assessment of what these symptoms might indicate. "
-            "2. An urgency level: choose exactly one of: urgent, soon, monitor. "
-            "Return ONLY a JSON object with keys 'ai_assessment' (string) and 'urgency_level' (string). "
-            "Example: {\"ai_assessment\": \"...\", \"urgency_level\": \"soon\"}"
+            "Provide a brief assessment of what these symptoms might indicate and an urgency level. "
+            "Return ONLY a JSON object with keys 'ai_assessment' (string) and 'urgency_level' (string, one of: urgent, soon, monitor). "
+            'Example: {"ai_assessment": "...", "urgency_level": "soon"}'
         )
-        response = await model.ainvoke([
-            SystemMessage(content="You are a dental health AI. Respond only with valid JSON."),
-            HumanMessage(content=prompt)
-        ])
-        data = extract_json(str(response.content))
+        response = client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction="You are a dental health AI. Respond only with valid JSON.",
+                temperature=0.3,
+            )
+        )
+        data = extract_json(response.text)
         if data and 'ai_assessment' in data and 'urgency_level' in data:
             urgency = data['urgency_level'].lower().strip()
             if urgency not in ['urgent', 'soon', 'monitor']:
@@ -119,4 +142,7 @@ async def analyze_symptoms(symptoms: list[str]) -> dict:
     except Exception as e:
         print(f">>> Symptom Analysis Error: {e}")
 
-    return {"ai_assessment": "Based on your symptoms, we recommend consulting a dentist for a proper evaluation.", "urgency_level": "monitor"}
+    return {
+        "ai_assessment": "Based on your symptoms, we recommend consulting a dentist for a proper evaluation.",
+        "urgency_level": "monitor"
+    }
