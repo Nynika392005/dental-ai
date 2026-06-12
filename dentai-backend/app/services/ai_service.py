@@ -11,7 +11,7 @@ load_dotenv()
 
 def get_client():
     api_key = os.getenv("GOOGLE_API_KEY") or settings.GOOGLE_API_KEY
-    return genai.Client(api_key=api_key)
+    return genai.Client(api_key=api_key, http_options={"api_version": "v1"})
 
 def extract_json(text):
     try:
@@ -30,7 +30,7 @@ async def analyze_image_task(image_base64: str, task_type: str) -> dict:
         import base64
         image_bytes = base64.b64decode(image_base64)
         response = client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.0-flash",
             contents=[
                 types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
                 prompt
@@ -97,7 +97,7 @@ async def stream_chat_response(message: str, history: list):
 
         full_response = ""
         for chunk in client.models.generate_content_stream(
-            model="gemini-1.5-flash",
+            model="gemini-2.0-flash",
             contents=contents,
             config=types.GenerateContentConfig(
                 system_instruction=system_prompt,
@@ -126,7 +126,7 @@ async def analyze_symptoms(symptoms: list[str]) -> dict:
             'Example: {"ai_assessment": "...", "urgency_level": "soon"}'
         )
         response = client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.0-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction="You are a dental health AI. Respond only with valid JSON.",
