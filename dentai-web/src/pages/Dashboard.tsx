@@ -50,32 +50,31 @@ export const Dashboard: React.FC = () => {
       name: 'Scan Meds', 
       icon: <Pill size={20} color="#0d9488" />, 
       bg: '#f0fdfa',
-      prompt: 'Can you help me analyze the oral side effects of my current medications?'
+      path: '/scan?type=medicine'
     },
     { 
       name: 'Tooth Check', 
       icon: <Sparkles size={20} color="#7c3aed" />, 
       bg: '#f5f3ff',
-      prompt: 'I want to perform a self-assessment on my teeth. What should I look for?' 
+      path: '/scan?type=tooth'
     },
     { 
       name: 'Food Impact', 
       icon: <Flame size={20} color="#ea580c" />, 
       bg: '#fff7ed',
-      prompt: 'What are the best and worst foods for enamel health and staining?' 
+      path: '/scan?type=food'
     },
     { 
       name: 'Habit Sentinel', 
       icon: <Award size={20} color="#db2777" />, 
       bg: '#fdf2f8',
-      prompt: 'How do habits like coffee drinking or nail biting affect my teeth over time?' 
+      path: '/scan?type=habit'
     },
     { 
       name: 'Voice Assist', 
       icon: <Mic size={20} color="#2563eb" />, 
       bg: '#eff6ff',
-      prompt: 'Start voice consultation.',
-      voice: true
+      path: '/chat?voice=true'
     }
   ];
 
@@ -174,13 +173,7 @@ export const Dashboard: React.FC = () => {
                   key={index} 
                   className="tool-card" 
                   style={{ cursor: 'pointer' }}
-                  onClick={() => {
-                    if (tool.voice) {
-                      navigate(`/chat?voice=true`);
-                    } else {
-                      navigate(`/chat?q=${encodeURIComponent(tool.prompt)}`);
-                    }
-                  }}
+                  onClick={() => navigate(tool.path)}
                 >
                   <div className="tool-icon" style={{ backgroundColor: tool.bg }}>
                     {tool.icon}

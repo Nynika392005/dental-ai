@@ -11,6 +11,7 @@ import { Chat } from './pages/Chat';
 import { Appointments } from './pages/Appointments';
 import { SymptomChecker } from './pages/SymptomChecker';
 import { Education } from './pages/Education';
+import { AIScan } from './pages/AIScan';
 import './App.css';
 
 // Protected Route Guard
@@ -50,6 +51,7 @@ const AppLayout: React.FC = () => {
       case '/appointments': return 'Dental Appointments';
       case '/symptom-checker': return 'Symptom Diagnostics';
       case '/education': return 'Education Library';
+      case '/scan': return 'Smart AI Scan';
       default: return 'DentAI Portal';
     }
   };
@@ -84,6 +86,7 @@ const AppLayout: React.FC = () => {
               <Route path="/appointments" element={<Appointments />} />
               <Route path="/symptom-checker" element={<SymptomChecker />} />
               <Route path="/education" element={<Education />} />
+              <Route path="/scan" element={<AIScan />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </div>

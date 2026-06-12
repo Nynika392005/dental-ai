@@ -9,7 +9,8 @@ import {
   BookOpen, 
   LogOut, 
   User as UserIcon,
-  ShieldAlert
+  ShieldAlert,
+  ScanSearch
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -69,6 +70,14 @@ export const Sidebar: React.FC = () => {
         >
           <BookOpen size={20} />
           <span>Learn Hub</span>
+        </NavLink>
+
+        <NavLink 
+          to="/scan" 
+          className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+        >
+          <ScanSearch size={20} />
+          <span>AI Scan</span>
         </NavLink>
       </nav>
 
