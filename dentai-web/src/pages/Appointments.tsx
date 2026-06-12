@@ -30,6 +30,8 @@ interface Appointment {
   patient_id: string;
   dentist_id: string;
   clinic_id: string;
+  clinic_name: string;
+  dentist_name: string;
   scheduled_at: string;
   reason?: string;
   status: string;
@@ -155,9 +157,6 @@ export const Appointments: React.FC = () => {
       setLoading(false);
     }
   };
-
-  const getClinicName = (id: string) => clinics.find(c => c.id === id)?.name || 'Clinic';
-  const getDentistName = (id: string) => dentists.find(d => d.id === id)?.full_name || 'Dentist';
 
   return (
     <div className="page-container">
@@ -321,7 +320,7 @@ export const Appointments: React.FC = () => {
                   style={{ border: '1px solid var(--bg-light-border)', borderRadius: '12px', padding: '16px', background: 'var(--bg-light)' }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--primary)' }}>{getClinicName(app.clinic_id)}</span>
+                    <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--primary)' }}>{app.clinic_name}</span>
                     <span 
                       style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', padding: '2px 8px', borderRadius: '12px' }}
                       className={`urgency-badge ${app.status === 'scheduled' ? 'monitor' : 'routine'}`}
@@ -331,7 +330,7 @@ export const Appointments: React.FC = () => {
                   </div>
                   <div style={{ fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                     <UserIcon size={14} color="var(--text-secondary)" />
-                    <span>{getDentistName(app.dentist_id)}</span>
+                    <span>{app.dentist_name}</span>
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                     <Clock size={14} color="var(--text-secondary)" />
