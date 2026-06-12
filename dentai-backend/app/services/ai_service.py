@@ -9,9 +9,8 @@ import re
 
 load_dotenv()
 
-def get_chat_model(model_name="models/gemini-1.5-flash"):
+def get_chat_model(model_name="gemini-1.5-flash"):
     api_key = os.getenv("GOOGLE_API_KEY") or settings.GOOGLE_API_KEY
-    # Ensure we are using the most stable model name format
     return ChatGoogleGenerativeAI(model=model_name, google_api_key=api_key, temperature=0.7)
 
 def extract_json(text):
@@ -26,8 +25,7 @@ async def analyze_image_task(image_base64: str, task_type: str) -> dict:
     t_type = str(task_type).strip().lower()
 
     try:
-        # Trying with the 'models/' prefix which is more compatible with some API versions
-        model = get_chat_model("models/gemini-1.5-flash")
+        model = get_chat_model("gemini-1.5-flash")
         prompt = f"Analyze this {t_type} image for dental health. Return strict JSON."
         content = [{"type": "text", "text": prompt}, {"type": "image_url", "image_url": f"data:image/jpeg;base64,{image_base64}"}]
         response = await model.ainvoke([HumanMessage(content=content)])
@@ -37,7 +35,6 @@ async def analyze_image_task(image_base64: str, task_type: str) -> dict:
         print(f">>> AI Vision Error: {e}")
 
     # --- DYNAMIC MOCK FALLBACK ---
-    # Ensuring variety in responses for demo
     scenarios = {
         "food": [
             {"impact_score": 3, "analysis": "High sugar and acidity detected.", "advice": "Rinse with water."},
@@ -67,7 +64,7 @@ async def stream_chat_response(message: str, history: list):
             yield "data: [DONE]\n\n"
             return
 
-        model = get_chat_model("models/gemini-1.5-flash")
+        model = get_chat_model("gemini-1.5-flash")
         system_prompt = (
             "You are DentAI, a knowledgeable and friendly dental health assistant. "
             "You help patients and dentists with questions about oral hygiene, dental procedures, "
@@ -99,7 +96,7 @@ async def stream_chat_response(message: str, history: list):
 
 async def analyze_symptoms(symptoms: list[str]) -> dict:
     try:
-        model = get_chat_model("models/gemini-1.5-flash")
+        model = get_chat_model("gemini-1.5-flash")
         symptoms_text = ", ".join(symptoms)
         prompt = (
             f"A dental patient reports the following symptoms: {symptoms_text}. "
@@ -115,7 +112,6 @@ async def analyze_symptoms(symptoms: list[str]) -> dict:
         ])
         data = extract_json(str(response.content))
         if data and 'ai_assessment' in data and 'urgency_level' in data:
-            # Normalize urgency level
             urgency = data['urgency_level'].lower().strip()
             if urgency not in ['urgent', 'soon', 'monitor']:
                 urgency = 'monitor'
@@ -123,5 +119,4 @@ async def analyze_symptoms(symptoms: list[str]) -> dict:
     except Exception as e:
         print(f">>> Symptom Analysis Error: {e}")
 
-    # Fallback
     return {"ai_assessment": "Based on your symptoms, we recommend consulting a dentist for a proper evaluation.", "urgency_level": "monitor"}
