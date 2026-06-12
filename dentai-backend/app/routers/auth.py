@@ -92,6 +92,50 @@ async def get_me(current_user: User = Depends(get_current_user)):
         "created_at": current_user.created_at,
     }
 
+@router.get("/dentist-profile")
+async def get_dentist_profile(current_user: User = Depends(get_current_user), db = Depends(get_db)):
+    role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    if role != "dentist":
+        raise HTTPException(status_code=403, detail="Not a dentist account")
+    dentist_doc = await db["dentists"].find_one({"user_id": str(current_user.id)})
+    if not dentist_doc:
+        raise HTTPException(status_code=404, detail="Dentist profile not found")
+    clinic_doc = await db["clinics"].find_one({"_id": dentist_doc.get("clinic_id")})
+    return {
+        "dentist_id": dentist_doc["_id"],
+        "specialization": dentist_doc.get("specialization"),
+        "bio": dentist_doc.get("bio"),
+        "clinic_id": dentist_doc.get("clinic_id"),
+        "clinic_name": clinic_doc["name"] if clinic_doc else None,
+        "clinic_address": clinic_doc["address"] if clinic_doc else None,
+        "clinic_phone": clinic_doc["phone"] if clinic_doc else None,
+    }
+
+@router.patch("/update-profile")
+async def update_profile(body: dict, current_user: User = Depends(get_current_user), db = Depends(get_db)):
+    role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    # Update user fields
+    user_updates = {}
+    if "full_name" in body: user_updates["full_name"] = body["full_name"]
+    if "phone" in body: user_updates["phone"] = body["phone"]
+    if user_updates:
+        await db["users"].update_one({"_id": str(current_user.id)}, {"$set": user_updates})
+    # Update dentist/clinic fields
+    if role == "dentist":
+        dentist_doc = await db["dentists"].find_one({"user_id": str(current_user.id)})
+        if dentist_doc:
+            dentist_updates = {}
+            if "specialization" in body: dentist_updates["specialization"] = body["specialization"]
+            if "bio" in body: dentist_updates["bio"] = body["bio"]
+            if dentist_updates:
+                await db["dentists"].update_one({"_id": dentist_doc["_id"]}, {"$set": dentist_updates})
+            clinic_updates = {}
+            if "clinic_name" in body: clinic_updates["name"] = body["clinic_name"]
+            if "clinic_address" in body: clinic_updates["address"] = body["clinic_address"]
+            if clinic_updates:
+                await db["clinics"].update_one({"_id": dentist_doc["clinic_id"]}, {"$set": clinic_updates})
+    return {"message": "Profile updated successfully"}
+
 @router.get("/init-db")
 async def init_db(db = Depends(get_db)):
     """Manual trigger to create indexes and seed MongoDB data"""

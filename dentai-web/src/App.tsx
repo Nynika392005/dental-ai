@@ -7,11 +7,14 @@ import { LandingPage } from './pages/LandingPage';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
+import { DentistDashboard } from './pages/DentistDashboard';
 import { Chat } from './pages/Chat';
 import { Appointments } from './pages/Appointments';
+import { DentistAppointments } from './pages/DentistAppointments';
 import { SymptomChecker } from './pages/SymptomChecker';
 import { Education } from './pages/Education';
 import { AIScan } from './pages/AIScan';
+import { Profile } from './pages/Profile';
 import './App.css';
 
 // Protected Route Guard
@@ -35,23 +38,23 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 // Main App Layout Wrapper
 const AppLayout: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isDentist = user?.role === 'dentist';
 
-  // Define public paths where sidebar/navbar should be hidden
   const publicPaths = ['/', '/login', '/register'];
   const isPublicPath = publicPaths.includes(location.pathname);
 
-  // Dynamically set navbar header title
   const getPageTitle = () => {
     switch (location.pathname) {
-      case '/dashboard': return 'Patient Dashboard';
+      case '/dashboard': return isDentist ? 'Dentist Dashboard' : 'Patient Dashboard';
       case '/chat': return 'DentAI Assistant';
-      case '/appointments': return 'Dental Appointments';
+      case '/appointments': return isDentist ? 'Patient Appointments' : 'Dental Appointments';
       case '/symptom-checker': return 'Symptom Diagnostics';
       case '/education': return 'Education Library';
       case '/scan': return 'Smart AI Scan';
+      case '/profile': return 'My Profile';
       default: return 'DentAI Portal';
     }
   };
@@ -60,33 +63,23 @@ const AppLayout: React.FC = () => {
     return (
       <ProtectedRoute>
         <div className="app-container">
-          {/* Sidebar */}
           <div className={mobileMenuOpen ? 'sidebar mobile-open' : 'sidebar'}>
             <Sidebar />
           </div>
-
-          {/* Main Content Pane */}
           <div className="main-content">
-            <Navbar 
-              title={getPageTitle()} 
-              onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)} 
-            />
-            
-            {/* Overlay to close sidebar on mobile click */}
+            <Navbar title={getPageTitle()} onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)} />
             {mobileMenuOpen && (
-              <div 
-                style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 95 }}
-                onClick={() => setMobileMenuOpen(false)}
-              />
+              <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 95 }}
+                onClick={() => setMobileMenuOpen(false)} />
             )}
-            
             <Routes>
-              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/dashboard" element={isDentist ? <DentistDashboard /> : <Dashboard />} />
               <Route path="/chat" element={<Chat />} />
-              <Route path="/appointments" element={<Appointments />} />
+              <Route path="/appointments" element={isDentist ? <DentistAppointments /> : <Appointments />} />
               <Route path="/symptom-checker" element={<SymptomChecker />} />
               <Route path="/education" element={<Education />} />
               <Route path="/scan" element={<AIScan />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </div>
@@ -95,7 +88,6 @@ const AppLayout: React.FC = () => {
     );
   }
 
-  // Fallback structure for public pages
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />

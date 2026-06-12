@@ -86,17 +86,34 @@ async def get_appointments(
     current_user: User = Depends(get_current_user),
     db = Depends(get_db)
 ):
-    app_cursor = db["appointments"].find({"patient_id": str(current_user.id)}).sort("scheduled_at", -1)
+    # Patients see their own bookings; dentists see appointments booked with them
+    role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+
+    if role == "dentist":
+        # Find the dentist profile for this user
+        dentist_doc = await db["dentists"].find_one({"user_id": str(current_user.id)})
+        if not dentist_doc:
+            return []
+        app_cursor = db["appointments"].find({"dentist_id": dentist_doc["_id"]}).sort("scheduled_at", -1)
+    else:
+        app_cursor = db["appointments"].find({"patient_id": str(current_user.id)}).sort("scheduled_at", -1)
+
     appointments = []
     async for app_doc in app_cursor:
-        # Enrich with clinic and dentist names
         clinic_doc = await db["clinics"].find_one({"_id": app_doc.get("clinic_id")})
-        dentist_doc = await db["dentists"].find_one({"_id": app_doc.get("dentist_id")})
+        dentist_doc2 = await db["dentists"].find_one({"_id": app_doc.get("dentist_id")})
         dentist_name = "Unknown"
-        if dentist_doc:
-            u_doc = await db["users"].find_one({"_id": dentist_doc["user_id"]})
+        if dentist_doc2:
+            u_doc = await db["users"].find_one({"_id": dentist_doc2["user_id"]})
             if u_doc:
                 dentist_name = u_doc["full_name"]
+
+        # For dentists, also fetch patient name
+        patient_name = "Unknown Patient"
+        if role == "dentist":
+            p_doc = await db["users"].find_one({"_id": app_doc.get("patient_id")})
+            if p_doc:
+                patient_name = p_doc["full_name"]
 
         appointments.append({
             "id": app_doc["_id"],
@@ -105,9 +122,32 @@ async def get_appointments(
             "clinic_id": app_doc["clinic_id"],
             "clinic_name": clinic_doc["name"] if clinic_doc else "Unknown Clinic",
             "dentist_name": dentist_name,
+            "patient_name": patient_name,
             "scheduled_at": app_doc["scheduled_at"],
             "reason": app_doc.get("reason"),
             "status": app_doc.get("status", "scheduled"),
             "notes": app_doc.get("notes")
         })
     return appointments
+
+@router.patch("/{appointment_id}/status")
+async def update_appointment_status(
+    appointment_id: str,
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+    if role != "dentist":
+        raise HTTPException(status_code=403, detail="Only dentists can update appointment status")
+
+    new_status = body.get("status")
+    valid = ["scheduled", "confirmed", "completed", "cancelled"]
+    if new_status not in valid:
+        raise HTTPException(status_code=400, detail=f"Status must be one of {valid}")
+
+    await db["appointments"].update_one(
+        {"_id": appointment_id},
+        {"$set": {"status": new_status}}
+    )
+    return {"message": "Status updated", "status": new_status}
