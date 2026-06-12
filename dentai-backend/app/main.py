@@ -35,7 +35,23 @@ app.include_router(ai_analysis.router)
 async def root():
     return {"message": "Welcome to DentAI API", "status": "online"}
 
-@app.get("/test")
-async def test():
-    return {"message": "Server is reachable", "version": "fallback_v1"}
+@app.get("/test-ai")
+async def test_ai():
+    """Test endpoint to verify AI SDK and model access"""
+    import os
+    from app.core.config import settings
+    api_key = os.getenv("GOOGLE_API_KEY") or settings.GOOGLE_API_KEY
+    key_preview = f"{api_key[:8]}..." if api_key and len(api_key) > 8 else "NOT SET"
+    
+    try:
+        from google import genai
+        from google.genai import types
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents="Say hello in one word."
+        )
+        return {"status": "ok", "key_preview": key_preview, "response": response.text, "sdk": "google-genai"}
+    except Exception as e:
+        return {"status": "error", "key_preview": key_preview, "error": str(e), "sdk": "google-genai"}
 
