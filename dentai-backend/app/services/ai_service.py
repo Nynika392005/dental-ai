@@ -126,7 +126,7 @@ async def stream_chat_response(message: str, history: list):
 
     except Exception as e:
         print(f">>> Chat Error: {type(e).__name__}: {e}")
-        yield f"data: {json.dumps({'token': f'AI service error: {str(e)}'})}\n\n"
+        yield f"data: {json.dumps({'token': 'AI service is temporarily unavailable. Please try again.'})}\n\n"
         yield "data: [DONE]\n\n"
 
 

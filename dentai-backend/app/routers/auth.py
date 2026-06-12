@@ -137,15 +137,15 @@ async def update_profile(body: dict, current_user: User = Depends(get_current_us
     return {"message": "Profile updated successfully"}
 
 @router.get("/init-db")
-async def init_db(db = Depends(get_db)):
-    """Manual trigger to create indexes and seed MongoDB data"""
+async def init_db(current_user: User = Depends(get_current_user), db = Depends(get_db)):
+    """Admin-only: create indexes and seed MongoDB data"""
+    role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
     try:
-        # Create indexes
         await db["users"].create_index("email", unique=True)
         await db["users"].create_index("phone", unique=True)
         await db["articles"].create_index("slug", unique=True)
-        
-        # Trigger seeding
         from seed import seed_mongodb_data
         await seed_mongodb_data(db)
         return {"message": "MongoDB databases initialized and seeded successfully!"}

@@ -9,7 +9,10 @@ import uuid
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
 @router.get("/clinics")
-async def get_clinics(db = Depends(get_db)):
+async def get_clinics(
+    current_user: User = Depends(get_current_user),
+    db = Depends(get_db)
+):
     clinic_cursor = db["clinics"].find({})
     clinics = []
     async for c_doc in clinic_cursor:
@@ -22,7 +25,11 @@ async def get_clinics(db = Depends(get_db)):
     return clinics
 
 @router.get("/dentists/{clinic_id}")
-async def get_dentists(clinic_id: str, db = Depends(get_db)):
+async def get_dentists(
+    clinic_id: str,
+    current_user: User = Depends(get_current_user),
+    db = Depends(get_db)
+):
     dentists_cursor = db["dentists"].find({"clinic_id": clinic_id})
     dentists = []
     async for d_doc in dentists_cursor:
@@ -49,6 +56,12 @@ async def create_appointment(
     current_user: User = Depends(get_current_user),
     db = Depends(get_db)
 ):
+    # Verify the dentist actually exists and belongs to the stated clinic
+    dentist_doc = await db["dentists"].find_one({"_id": str(req.dentist_id)})
+    if not dentist_doc:
+        raise HTTPException(status_code=400, detail="Dentist not found")
+    if dentist_doc.get("clinic_id") != str(req.clinic_id):
+        raise HTTPException(status_code=400, detail="Dentist does not belong to selected clinic")
     appointment = Appointment(
         patient_id=current_user.id,
         dentist_id=req.dentist_id,
@@ -145,6 +158,17 @@ async def update_appointment_status(
     valid = ["scheduled", "confirmed", "completed", "cancelled"]
     if new_status not in valid:
         raise HTTPException(status_code=400, detail=f"Status must be one of {valid}")
+
+    # IDOR fix: verify this appointment belongs to the requesting dentist
+    dentist_doc = await db["dentists"].find_one({"user_id": str(current_user.id)})
+    if not dentist_doc:
+        raise HTTPException(status_code=403, detail="Dentist profile not found")
+
+    app_doc = await db["appointments"].find_one({"_id": appointment_id})
+    if not app_doc:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    if app_doc.get("dentist_id") != dentist_doc["_id"]:
+        raise HTTPException(status_code=403, detail="You do not have permission to update this appointment")
 
     await db["appointments"].update_one(
         {"_id": appointment_id},
