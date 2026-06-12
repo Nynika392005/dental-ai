@@ -19,18 +19,6 @@ async def get_clinics(db = Depends(get_db)):
             "address": c_doc["address"],
             "phone": c_doc["phone"]
         })
-    # Auto-seed if no clinics found
-    if not clinics:
-        from seed import seed_mongodb_data
-        await seed_mongodb_data(db)
-        clinic_cursor = db["clinics"].find({})
-        async for c_doc in clinic_cursor:
-            clinics.append({
-                "id": c_doc["_id"],
-                "name": c_doc["name"],
-                "address": c_doc["address"],
-                "phone": c_doc["phone"]
-            })
     return clinics
 
 @router.get("/dentists/{clinic_id}")

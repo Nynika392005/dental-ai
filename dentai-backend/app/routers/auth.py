@@ -32,10 +32,29 @@ async def register_user(user_in: UserCreate, db = Depends(get_db)):
         phone=user_in.phone,
         password_hash=hashed_password,
         role=user_in.role,
-        is_verified=True # Auto-verify for demo
+        is_verified=True
     )
-    
     await db["users"].insert_one(new_user.to_dict())
+
+    # If registering as dentist, create clinic + dentist profile
+    if user_in.role == "dentist":
+        clinic_name = user_in.clinic_name or f"{user_in.full_name}'s Clinic"
+        clinic_address = user_in.clinic_address or "Address not provided"
+        new_clinic = Clinic(
+            name=clinic_name,
+            address=clinic_address,
+            phone=user_in.phone
+        )
+        await db["clinics"].insert_one(new_clinic.to_dict())
+
+        new_dentist = Dentist(
+            user_id=new_user.id,
+            clinic_id=new_clinic.id,
+            specialization=user_in.specialization or "General Dentistry",
+            bio=user_in.bio or ""
+        )
+        await db["dentists"].insert_one(new_dentist.to_dict())
+
     return {
         "id": new_user.id,
         "full_name": new_user.full_name,

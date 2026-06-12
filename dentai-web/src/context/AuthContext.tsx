@@ -14,7 +14,7 @@ interface AuthContextType {
   token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (fullName: string, email: string, phone: string, password: string, role?: string) => Promise<void>;
+  register: (fullName: string, email: string, phone: string, password: string, role?: string, dentistDetails?: Record<string, string>) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -60,14 +60,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (fullName: string, email: string, phone: string, password: string, role = 'patient') => {
+  const register = async (fullName: string, email: string, phone: string, password: string, role = 'patient', dentistDetails?: Record<string, string>) => {
     try {
       await api.post('/auth/register', {
         full_name: fullName,
         email,
         phone,
         password,
-        role
+        role,
+        ...dentistDetails
       });
     } catch (error) {
       console.error('Registration error', error);

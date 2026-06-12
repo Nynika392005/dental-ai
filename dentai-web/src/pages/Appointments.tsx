@@ -182,7 +182,11 @@ export const Appointments: React.FC = () => {
             <div className="form-group" style={{ marginBottom: '24px' }}>
               <label className="form-label">1. Choose Clinic Location</label>
               <div className="clinics-list">
-                {clinics.map((c) => (
+                {clinics.length === 0 ? (
+                  <div style={{ padding: '20px', textAlign: 'center', border: '1px dashed var(--bg-light-border)', borderRadius: '12px', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                    No clinics available yet. Clinics are added when dentists register on DentAI.
+                  </div>
+                ) : clinics.map((c) => (
                   <div 
                     key={c.id} 
                     className={`clinic-card ${selectedClinic === c.id ? 'selected' : ''}`}

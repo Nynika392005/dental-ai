@@ -9,6 +9,11 @@ class UserCreate(BaseModel):
     phone: str
     password: constr(min_length=8)
     role: str = "patient"
+    # Dentist-only fields
+    specialization: Optional[str] = None
+    bio: Optional[str] = None
+    clinic_name: Optional[str] = None
+    clinic_address: Optional[str] = None
 
 class UserResponse(BaseModel):
     id: uuid.UUID
