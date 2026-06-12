@@ -60,6 +60,13 @@ async def analyze_image_task(image_base64: str, task_type: str) -> dict:
 
 async def stream_chat_response(message: str, history: list):
     try:
+        api_key = os.getenv("GOOGLE_API_KEY") or settings.GOOGLE_API_KEY
+        if not api_key:
+            print(">>> Chat Error: GOOGLE_API_KEY is not set!")
+            yield f"data: {json.dumps({'token': 'Configuration error: AI service is not configured. Please set GOOGLE_API_KEY in environment variables.'})}\n\n"
+            yield "data: [DONE]\n\n"
+            return
+
         model = get_chat_model("models/gemini-1.5-flash")
         system_prompt = (
             "You are DentAI, a knowledgeable and friendly dental health assistant. "
@@ -86,8 +93,8 @@ async def stream_chat_response(message: str, history: list):
             yield f"data: {json.dumps({'token': chunk.content})}\n\n"
         yield "data: [DONE]\n\n"
     except Exception as e:
-        print(f">>> Chat Error: {e}")
-        yield f"data: {json.dumps({'token': 'I am DentAI. Please remember to brush and floss daily for a healthy smile!'})}\n\n"
+        print(f">>> Chat Error (full): {type(e).__name__}: {e}")
+        yield f"data: {json.dumps({'token': f'AI service error: {str(e)}'})}\n\n"
         yield "data: [DONE]\n\n"
 
 async def analyze_symptoms(symptoms: list[str]) -> dict:
