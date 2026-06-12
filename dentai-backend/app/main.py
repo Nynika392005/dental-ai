@@ -45,13 +45,10 @@ async def test_ai():
     
     try:
         from google import genai
-        from google.genai import types
         client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model="gemini-1.5-flash",
-            contents="Say hello in one word."
-        )
-        return {"status": "ok", "key_preview": key_preview, "response": response.text, "sdk": "google-genai"}
+        # List available models to find the right one
+        models = [m.name for m in client.models.list() if "generateContent" in (m.supported_actions or [])]
+        return {"status": "ok", "key_preview": key_preview, "available_models": models[:10]}
     except Exception as e:
-        return {"status": "error", "key_preview": key_preview, "error": str(e), "sdk": "google-genai"}
+        return {"status": "error", "key_preview": key_preview, "error": str(e)}
 
