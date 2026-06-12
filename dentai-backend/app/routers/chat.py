@@ -40,20 +40,22 @@ async def send_message(
     )
     await db["messages"].insert_one(user_msg.to_dict())
     
-    # Fetch history of messages for this conversation (up to 20)
-    msg_cursor = db["messages"].find({"conversation_id": str(conv_id)}).sort("created_at", 1).limit(20)
+    # Fetch history of messages for this conversation (up to 20), excluding the just-saved user message
+    msg_cursor = db["messages"].find({"conversation_id": str(conv_id)}).sort("created_at", 1).limit(21)
     history = []
     async for msg_doc in msg_cursor:
         history.append(Message(**msg_doc))
-        
+
+    # history[-1] is the user message we just saved — pass everything before it as context
+    prior_history = history[:-1]
+
     # Stream AI response
     async def generator():
         import json
         yield f"data: {json.dumps({'conversation_id': str(conv_id)})}\n\n"
         
         full_response = ""
-        # Exclude the user message we just saved from history as it's passed separately
-        async for chunk in stream_chat_response(req.message, history[:-1]): 
+        async for chunk in stream_chat_response(req.message, prior_history): 
             if "data: [DONE]" not in chunk:
                 try:
                     data = json.loads(chunk.replace("data: ", ""))

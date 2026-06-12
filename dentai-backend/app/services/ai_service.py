@@ -61,8 +61,27 @@ async def analyze_image_task(image_base64: str, task_type: str) -> dict:
 async def stream_chat_response(message: str, history: list):
     try:
         model = get_chat_model("models/gemini-1.5-flash")
-        messages = [SystemMessage(content="You are DentAI.")]
+        system_prompt = (
+            "You are DentAI, a knowledgeable and friendly dental health assistant. "
+            "You help patients and dentists with questions about oral hygiene, dental procedures, "
+            "symptoms, medications, diet, and general dental care. "
+            "Give clear, accurate, and practical advice. "
+            "Always recommend consulting a licensed dentist for diagnosis or treatment. "
+            "Be concise but thorough. Never refuse dental health questions."
+        )
+        messages = [SystemMessage(content=system_prompt)]
+
+        # Include conversation history for context
+        for msg in history:
+            role = msg.role if hasattr(msg, 'role') else msg.get('role', 'user')
+            content = msg.content if hasattr(msg, 'content') else msg.get('content', '')
+            if role == 'user':
+                messages.append(HumanMessage(content=content))
+            elif role == 'assistant':
+                messages.append(AIMessage(content=content))
+
         messages.append(HumanMessage(content=message))
+
         async for chunk in model.astream(messages):
             yield f"data: {json.dumps({'token': chunk.content})}\n\n"
         yield "data: [DONE]\n\n"
@@ -72,4 +91,30 @@ async def stream_chat_response(message: str, history: list):
         yield "data: [DONE]\n\n"
 
 async def analyze_symptoms(symptoms: list[str]) -> dict:
-    return {"ai_assessment": "Please consult a dentist.", "urgency_level": "monitor"}
+    try:
+        model = get_chat_model("models/gemini-1.5-flash")
+        symptoms_text = ", ".join(symptoms)
+        prompt = (
+            f"A dental patient reports the following symptoms: {symptoms_text}. "
+            "As a dental AI assistant, provide: "
+            "1. A brief assessment of what these symptoms might indicate. "
+            "2. An urgency level: choose exactly one of: urgent, soon, monitor. "
+            "Return ONLY a JSON object with keys 'ai_assessment' (string) and 'urgency_level' (string). "
+            "Example: {\"ai_assessment\": \"...\", \"urgency_level\": \"soon\"}"
+        )
+        response = await model.ainvoke([
+            SystemMessage(content="You are a dental health AI. Respond only with valid JSON."),
+            HumanMessage(content=prompt)
+        ])
+        data = extract_json(str(response.content))
+        if data and 'ai_assessment' in data and 'urgency_level' in data:
+            # Normalize urgency level
+            urgency = data['urgency_level'].lower().strip()
+            if urgency not in ['urgent', 'soon', 'monitor']:
+                urgency = 'monitor'
+            return {"ai_assessment": data['ai_assessment'], "urgency_level": urgency}
+    except Exception as e:
+        print(f">>> Symptom Analysis Error: {e}")
+
+    # Fallback
+    return {"ai_assessment": "Based on your symptoms, we recommend consulting a dentist for a proper evaluation.", "urgency_level": "monitor"}
