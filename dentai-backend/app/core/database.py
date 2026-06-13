@@ -1,10 +1,13 @@
 import os
 import json
 import asyncio
+import logging
 from datetime import datetime
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlparse
 from motor.motor_asyncio import AsyncIOMotorClient
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 # Global DB state
 _db_instance = None
@@ -68,7 +71,8 @@ class JSONCollection:
                 json.dump(full_db, f, indent=2, default=str)
             os.replace(temp_path, self.db_path)
         except Exception as e:
-            print(f"FallbackDB Error writing: {e}")
+            # FIX-11: use logger instead of print() to avoid leaking path info to stdout
+            logger.error("FallbackDB error writing collection '%s': %s", self.name, type(e).__name__)
 
     def _match(self, doc, query):
         if not query:
@@ -239,23 +243,25 @@ async def check_db_connection():
 
     # Don't try connecting if the connection string contains placeholder
     if "<db_username>" in settings.MONGODB_URL or "<username>" in settings.MONGODB_URL:
-        print("MongoDB URL contains placeholders. Falling back to local JSON database.")
+        # FIX-11: use logger; never print the raw URL (may contain credentials)
+        logger.warning("MongoDB URL contains placeholders. Falling back to local JSON database.")
         fallback_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "dentai_fallback.json")
         _db_instance = FallbackDatabase(fallback_path)
         _use_fallback = True
         return _db_instance
 
     try:
-        print(f"Attempting to connect to MongoDB at: {db_name}")
+        # FIX-11: log only the database name, never the full URL (may contain password)
+        logger.info("Attempting to connect to MongoDB database: %s", db_name)
         client = AsyncIOMotorClient(settings.MONGODB_URL, serverSelectionTimeoutMS=2000)
         # Try pinging database
         await client.admin.command('ismaster')
-        print("Connected to MongoDB successfully!")
+        logger.info("Connected to MongoDB successfully.")
         _db_instance = client[db_name]
         _use_fallback = False
     except Exception as e:
-        print(f"MongoDB connection failed: {e}")
-        print("Falling back to local JSON database.")
+        # FIX-11: log only exception type, not the message (may contain connection string)
+        logger.warning("MongoDB connection failed (%s). Falling back to local JSON database.", type(e).__name__)
         fallback_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "dentai_fallback.json")
         _db_instance = FallbackDatabase(fallback_path)
         _use_fallback = True

@@ -1,14 +1,22 @@
 import logging
 import uuid
 from datetime import date
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.dependencies import get_current_user
 from app.models.appointment import Appointment
 from app.models.user import User
 from app.schemas.appointment import AppointmentCreate, AppointmentResponse
+
+
+# FIX-06: Typed schema replaces raw dict — prevents mass assignment and generates
+# a proper OpenAPI body schema so callers cannot inject arbitrary fields.
+class AppointmentStatusUpdate(BaseModel):
+    status: Literal["scheduled", "confirmed", "completed", "cancelled"]
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +197,7 @@ async def get_appointments(
 @router.patch("/{appointment_id}/status")
 async def update_appointment_status(
     appointment_id: str,
-    body: dict,
+    body: AppointmentStatusUpdate,  # FIX-06: typed schema, was raw dict
     current_user: User = Depends(get_current_user),
     db=Depends(get_db),
 ):
@@ -197,10 +205,7 @@ async def update_appointment_status(
     if role != "dentist":
         raise HTTPException(status_code=403, detail="Only dentists can update appointment status")
 
-    new_status = body.get("status")
-    valid = ["scheduled", "confirmed", "completed", "cancelled"]
-    if new_status not in valid:
-        raise HTTPException(status_code=400, detail=f"Status must be one of {valid}")
+    new_status = body.status  # FIX-06: direct attribute access, not dict.get()
 
     dentist_doc = await db["dentists"].find_one({"user_id": str(current_user.id)})
     if not dentist_doc:

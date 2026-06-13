@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: str = ""
     GROQ_API_KEY: str = ""
 
+    # FIX-04 / FIX-09: controls Redis fallback and HSTS header behaviour.
+    # Set to "production" in any deployed environment.
+    ENVIRONMENT: str = "development"
+
     CORS_ORIGINS: List[str] = [
         "http://localhost:5173",
         "http://localhost:5174",
@@ -36,8 +40,4 @@ class Settings(BaseSettings):
     )
 
 
-# SECURITY: Removed hardcoded fallback secret key.
-# If SECRET_KEY is missing from the environment, pydantic-settings will raise
-# a ValidationError and the application will refuse to start — which is the
-# correct behaviour. Never add a default value for SECRET_KEY.
 settings = Settings()

@@ -2,7 +2,11 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.routers import (
     auth,
@@ -19,6 +23,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# FIX-08: Rate limiting via slowapi
+# Per-IP limits applied to auth and AI endpoints to prevent brute-force and
+# AI cost-exhaustion attacks.
+# ---------------------------------------------------------------------------
+limiter = Limiter(key_func=get_remote_address)
+
 
 # ---------------------------------------------------------------------------
 # Security-headers middleware
@@ -33,8 +44,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["X-XSS-Protection"] = "0"  # CSP is the modern standard
         response.headers["Content-Security-Policy"] = "default-src 'none'"
-        # Enable HSTS once TLS is confirmed in production
-        # response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+        # FIX-09: Enable HSTS in production to force HTTPS and prevent MITM.
+        # In local development (ENVIRONMENT != "production") it is intentionally
+        # left off so plain HTTP localhost works without browser complaints.
+        if settings.ENVIRONMENT == "production":
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=63072000; includeSubDomains; preload"
+            )
         return response
 
 
@@ -53,7 +69,6 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
         if request.url.path.startswith("/analysis/"):
             return await call_next(request)
         if content_length and int(content_length) > MAX_JSON_BODY_BYTES:
-            from fastapi.responses import JSONResponse
             return JSONResponse(
                 status_code=413,
                 content={"detail": "Request body too large. Maximum is 1 MB."},
@@ -66,22 +81,32 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
 # ---------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("DentAI API starting up")
+    logger.info("DentAI API starting up (environment=%s)", settings.ENVIRONMENT)
     yield
     logger.info("DentAI API shutting down")
 
 
 # ---------------------------------------------------------------------------
 # FastAPI app
+# FIX-10: OpenAPI docs disabled in production to avoid exposing the full API
+# surface to unauthenticated callers. Enabled in development for convenience.
 # ---------------------------------------------------------------------------
-# SECURITY: OpenAPI docs are intentionally left enabled here for a college
-# project. In production, set docs_url=None and redoc_url=None.
+_is_production = settings.ENVIRONMENT == "production"
+
 app = FastAPI(
     title="DentAI API",
     description="Backend for DentAI Patient Chatbot",
     version="1.0.0",
     lifespan=lifespan,
+    # FIX-10: hide interactive docs in production
+    docs_url=None if _is_production else "/docs",
+    redoc_url=None if _is_production else "/redoc",
+    openapi_url=None if _is_production else "/openapi.json",
 )
+
+# FIX-08: Attach the rate-limiter state and exception handler to the app
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Order matters: security headers and size limit run before CORS
 app.add_middleware(SecurityHeadersMiddleware)

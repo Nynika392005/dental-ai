@@ -2,9 +2,11 @@ import logging
 import uuid
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.core.config import settings
 from app.core.database import get_db
@@ -14,6 +16,7 @@ from app.dependencies import get_current_user
 from app.models.user import Clinic, Dentist, RoleEnum, User
 from app.schemas.user import (
     LoginRequest,
+    LogoutRequest,
     RefreshRequest,
     Token,
     UserCreate,
@@ -28,6 +31,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+# FIX-08: router-level limiter (shares key_func with app-level limiter)
+limiter = Limiter(key_func=get_remote_address)
+
 
 # ---------------------------------------------------------------------------
 # Health check (unauthenticated — intentional)
@@ -39,9 +45,12 @@ async def health_check():
 
 # ---------------------------------------------------------------------------
 # Register
+# FIX-08: Rate-limited to 10 requests/minute per IP to prevent spam account
+# creation and user enumeration via response timing.
 # ---------------------------------------------------------------------------
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register_user(user_in: UserCreate, db=Depends(get_db)):
+@limiter.limit("10/minute")
+async def register_user(request: Request, user_in: UserCreate, db=Depends(get_db)):
     existing = await db["users"].find_one(
         {"$or": [{"email": user_in.email}, {"phone": user_in.phone}]}
     )
@@ -96,9 +105,11 @@ async def register_user(user_in: UserCreate, db=Depends(get_db)):
 
 # ---------------------------------------------------------------------------
 # Login
+# FIX-08: 5 attempts/minute per IP — prevents brute-force password attacks.
 # ---------------------------------------------------------------------------
 @router.post("/login", response_model=Token)
-async def login(login_data: LoginRequest, db=Depends(get_db)):
+@limiter.limit("5/minute")
+async def login(request: Request, login_data: LoginRequest, db=Depends(get_db)):
     user_doc = await db["users"].find_one({"email": login_data.email})
 
     # SECURITY: always run verify_password even on a miss to prevent timing attacks
@@ -119,9 +130,11 @@ async def login(login_data: LoginRequest, db=Depends(get_db)):
 
 # ---------------------------------------------------------------------------
 # Refresh
+# FIX-08: 10 attempts/minute per IP — prevents token replay amplification.
 # ---------------------------------------------------------------------------
 @router.post("/refresh", response_model=Token)
-async def refresh_token(body: RefreshRequest, db=Depends(get_db), redis=Depends(get_redis)):
+@limiter.limit("10/minute")
+async def refresh_token(request: Request, body: RefreshRequest, db=Depends(get_db), redis=Depends(get_redis)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid or expired refresh token",
@@ -161,25 +174,44 @@ async def refresh_token(body: RefreshRequest, db=Depends(get_db), redis=Depends(
 
 
 # ---------------------------------------------------------------------------
-# Logout  (revokes the current access token via its jti)
+# Logout  (revokes BOTH the access token and the refresh token via their jtis)
+# FIX-03: Previously only the access token was revoked; the refresh token
+# remained usable and could mint new access tokens after logout.
 # ---------------------------------------------------------------------------
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
+    body: LogoutRequest,
     current_user: User = Depends(get_current_user),
     redis=Depends(get_redis),
     token: str = Depends(_oauth2_scheme),
 ):
+    now = int(datetime.utcnow().timestamp())
+
+    # Revoke the access token
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
         jti: str | None = payload.get("jti")
         exp: int | None = payload.get("exp")
         if jti and exp:
-            # Store the revoked jti until the token naturally expires
-            now = int(datetime.utcnow().timestamp())
             ttl = max(exp - now, 1)
             await redis.setex(f"revoked_jti:{jti}", ttl, "1")
     except JWTError:
-        pass  # token already invalid — nothing to revoke
+        pass  # access token already invalid — nothing to revoke
+
+    # FIX-03: Also revoke the refresh token so it cannot be used to re-issue tokens
+    if body.refresh_token:
+        try:
+            rt_payload = jwt.decode(body.refresh_token, settings.SECRET_KEY, algorithms=["HS256"])
+            # Only revoke tokens that are actually refresh tokens
+            if rt_payload.get("type") == "refresh":
+                rt_jti: str | None = rt_payload.get("jti")
+                rt_exp: int | None = rt_payload.get("exp")
+                if rt_jti and rt_exp:
+                    rt_ttl = max(rt_exp - now, 1)
+                    await redis.setex(f"revoked_jti:{rt_jti}", rt_ttl, "1")
+        except JWTError:
+            pass  # refresh token already invalid — nothing to revoke
+
     return None
 
 
@@ -273,23 +305,11 @@ async def update_profile(
 
 
 # ---------------------------------------------------------------------------
-# Init DB  — SECURITY: changed to POST, admin-only, with explicit warning.
-# For production use, run `python seed.py` from the CLI instead.
+# Init DB  — FIX-01: Endpoint removed from HTTP API surface entirely.
+# Database seeding is a CLI-only operation: run `python seed.py`.
+# Exposing this over HTTP allowed any authenticated user (or an attacker with
+# a still-valid JWT after Redis failure) to reseed known weak credentials.
 # ---------------------------------------------------------------------------
-@router.post("/init-db")
-async def init_db(current_user: User = Depends(get_current_user), db=Depends(get_db)):
-    """Admin-only: create indexes and seed MongoDB data. Use CLI in production."""
-    role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
-    if role != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
-    try:
-        await db["users"].create_index("email", unique=True)
-        await db["users"].create_index("phone", unique=True)
-        await db["articles"].create_index("slug", unique=True)
-        from seed import seed_mongodb_data
-        await seed_mongodb_data(db)
-        return {"message": "MongoDB databases initialized and seeded successfully!"}
-    except Exception as exc:
-        # SECURITY: do not echo raw exception detail to the client
-        logger.exception("init-db failed")
-        raise HTTPException(status_code=500, detail="Database initialisation failed.")
+# REMOVED: POST /auth/init-db
+# To initialise or reseed the database run from the project root:
+#   python seed.py

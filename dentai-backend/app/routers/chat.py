@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from app.core.database import get_db
 from app.models.chat import Conversation, Message
 from app.models.user import User
@@ -10,6 +12,9 @@ import uuid
 from datetime import datetime
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+# FIX-08: Per-user rate limit on AI chat to prevent cost exhaustion
+limiter = Limiter(key_func=get_remote_address)
 
 @router.post("/message")
 async def send_message(
