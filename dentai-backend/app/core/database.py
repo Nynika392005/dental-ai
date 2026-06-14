@@ -2,6 +2,7 @@ import os
 import json
 import asyncio
 import logging
+import threading
 from datetime import datetime
 from urllib.parse import urlsplit, urlparse
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -44,7 +45,7 @@ class JSONCollection:
     def __init__(self, db_path, name):
         self.db_path = db_path
         self.name = name
-        self.lock = asyncio.Lock()
+        self._lock = threading.Lock()
         self.indexes = []
 
     def _read(self):
@@ -103,7 +104,7 @@ class JSONCollection:
         return True
 
     async def find_one(self, query):
-        async with self.lock:
+        with self._lock:
             docs = self._read()
             for doc in docs:
                 if self._match(doc, query):
@@ -111,7 +112,7 @@ class JSONCollection:
             return None
 
     async def insert_one(self, doc):
-        async with self.lock:
+        with self._lock:
             docs = self._read()
             clean_doc = self._clean_doc(doc)
             # Ensure document has a string id
@@ -153,7 +154,7 @@ class JSONCollection:
             return InsertResult()
 
     async def insert_many(self, docs):
-        async with self.lock:
+        with self._lock:
             current_docs = self._read()
             clean_docs = [self._clean_doc(d) for d in docs]
             for clean_doc in clean_docs:
@@ -186,7 +187,7 @@ class JSONCollection:
             return True
 
     async def delete_one(self, query):
-        async with self.lock:
+        with self._lock:
             docs = self._read()
             for i, doc in enumerate(docs):
                 if self._match(doc, query):
@@ -196,7 +197,7 @@ class JSONCollection:
             return False
 
     async def update_one(self, query, update, upsert=False):
-        async with self.lock:
+        with self._lock:
             docs = self._read()
             found = False
             target_doc = None

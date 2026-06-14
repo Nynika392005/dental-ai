@@ -57,6 +57,8 @@ class SymptomAnalysisResponseSchema(BaseModel):
     urgency_level: Literal["urgent", "soon", "monitor"]
 
 
+from pydantic import ValidationError
+
 def extract_json(text: str, schema) -> dict | None:
     """Strictly loads JSON and validates it against the Pydantic schema; returns dict on success, None on error."""
     try:
@@ -71,7 +73,11 @@ def extract_json(text: str, schema) -> dict | None:
         # Strictly validate against schema
         validated = schema(**parsed)
         return validated.model_dump() if hasattr(validated, "model_dump") else validated.dict()
-    except Exception:
+    except (json.JSONDecodeError, KeyError, TypeError, ValidationError) as e:
+        logger.warning("LLM response schema validation failure: %s", type(e).__name__)
+        return None
+    except Exception as e:
+        logger.error("Unexpected error during LLM response extraction: %s", type(e).__name__)
         return None
 
 

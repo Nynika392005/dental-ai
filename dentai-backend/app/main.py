@@ -1,13 +1,12 @@
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
+from app.core.limiter import limiter
 from app.routers import (
     auth,
     chat as chat_router,
@@ -23,35 +22,51 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# FIX-08: Rate limiting via slowapi
-# Per-IP limits applied to auth and AI endpoints to prevent brute-force and
-# AI cost-exhaustion attacks.
-# ---------------------------------------------------------------------------
-limiter = Limiter(key_func=get_remote_address)
-
 
 # ---------------------------------------------------------------------------
 # Security-headers middleware
 # ---------------------------------------------------------------------------
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+# ---------------------------------------------------------------------------
+# Security-headers middleware
+# ---------------------------------------------------------------------------
+class SecurityHeadersMiddleware:
     """Attach hardened HTTP security headers to every response."""
 
-    async def dispatch(self, request: Request, call_next) -> Response:
-        response = await call_next(request)
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["X-XSS-Protection"] = "0"  # CSP is the modern standard
-        response.headers["Content-Security-Policy"] = "default-src 'none'"
-        # FIX-09: Enable HSTS in production to force HTTPS and prevent MITM.
-        # In local development (ENVIRONMENT != "production") it is intentionally
-        # left off so plain HTTP localhost works without browser complaints.
-        if settings.ENVIRONMENT == "production":
-            response.headers["Strict-Transport-Security"] = (
-                "max-age=63072000; includeSubDomains; preload"
-            )
-        return response
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def send_wrapper(message):
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers", []))
+                existing_headers = {k.lower() for k, v in headers}
+                
+                new_headers = []
+                if b"x-content-type-options" not in existing_headers:
+                    new_headers.append((b"x-content-type-options", b"nosniff"))
+                if b"x-frame-options" not in existing_headers:
+                    new_headers.append((b"x-frame-options", b"DENY"))
+                if b"referrer-policy" not in existing_headers:
+                    new_headers.append((b"referrer-policy", b"strict-origin-when-cross-origin"))
+                if b"x-xss-protection" not in existing_headers:
+                    new_headers.append((b"x-xss-protection", b"0"))
+                if b"content-security-policy" not in existing_headers:
+                    new_headers.append((b"content-security-policy", b"default-src 'none'"))
+                
+                if settings.ENVIRONMENT == "production":
+                    if b"strict-transport-security" not in existing_headers:
+                        new_headers.append((b"strict-transport-security", b"max-age=63072000; includeSubDomains; preload"))
+                
+                headers.extend(new_headers)
+                message["headers"] = headers
+            
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper)
 
 
 # ---------------------------------------------------------------------------
@@ -60,20 +75,41 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 MAX_JSON_BODY_BYTES = 1 * 1024 * 1024  # 1 MB for JSON endpoints
 
 
-class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
+class RequestSizeLimitMiddleware:
     """Reject oversized request bodies to prevent memory-exhaustion DoS."""
 
-    async def dispatch(self, request: Request, call_next) -> Response:
-        content_length = request.headers.get("content-length")
-        # Skip size limit for the file-upload endpoint (it has its own 5 MB cap)
-        if request.url.path.startswith("/analysis/"):
-            return await call_next(request)
-        if content_length and int(content_length) > MAX_JSON_BODY_BYTES:
-            return JSONResponse(
-                status_code=413,
-                content={"detail": "Request body too large. Maximum is 1 MB."},
-            )
-        return await call_next(request)
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        path = scope.get("path", "")
+        # Skip size limit for the file-upload endpoint (it has its own 2 MB cap)
+        if path.startswith("/analysis/"):
+            await self.app(scope, receive, send)
+            return
+
+        headers = {k.lower(): v for k, v in scope.get("headers", [])}
+        content_length = headers.get(b"content-length")
+        
+        from fastapi.responses import JSONResponse
+        if content_length:
+            try:
+                length = int(content_length.decode("utf-8"))
+                if length > MAX_JSON_BODY_BYTES:
+                    response = JSONResponse(
+                        status_code=413,
+                        content={"detail": "Request body too large. Maximum is 1 MB."},
+                    )
+                    await response(scope, receive, send)
+                    return
+            except ValueError:
+                pass
+
+        await self.app(scope, receive, send)
 
 
 # ---------------------------------------------------------------------------
@@ -120,40 +156,70 @@ app = FastAPI(
 # NoSQL Injection Hardening (Operator Injection prevention WAF middleware)
 # Rejects requests with dict keys starting with $ (e.g. $ne, $gt, $regex, etc.)
 # ---------------------------------------------------------------------------
-class NoSQLInjectionMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next) -> Response:
+class NoSQLInjectionMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
         # Check query parameters
-        for key, val in request.query_params.items():
+        from urllib.parse import parse_qsl
+        from fastapi.responses import JSONResponse
+        
+        query_string = scope.get("query_string", b"").decode("utf-8")
+        for key, val in parse_qsl(query_string):
             if key.startswith("$"):
-                return JSONResponse(
+                response = JSONResponse(
                     status_code=400,
                     content={"detail": "Invalid operator key in query parameters."}
                 )
-        
+                await response(scope, receive, send)
+                return
+
         # Check JSON body if content-type is json
-        content_type = request.headers.get("content-type", "")
+        headers = {k.lower(): v for k, v in scope.get("headers", [])}
+        content_type = headers.get(b"content-type", b"").decode("utf-8")
         if "application/json" in content_type:
-            # We must parse and read the body without consuming it permanently
-            body_bytes = await request.body()
+            body_chunks = []
+            more_body = True
+            while more_body:
+                message = await receive()
+                if message["type"] == "http.request":
+                    body_chunks.append(message.get("body", b""))
+                    more_body = message.get("more_body", False)
+                elif message["type"] == "http.disconnect":
+                    return
+
+            body_bytes = b"".join(body_chunks)
             if body_bytes:
                 try:
                     import json
                     body_json = json.loads(body_bytes)
                     if self._contains_nosql_operators(body_json):
-                        return JSONResponse(
+                        response = JSONResponse(
                             status_code=400,
                             content={"detail": "Invalid operator key in request body."}
                         )
+                        await response(scope, receive, send)
+                        return
                 except Exception:
-                    # If JSON parsing fails here, allow normal processing (FastAPI will handle syntax errors)
                     pass
-                
-                # Re-wrap request body to allow downstream handlers to read it
-                async def receive():
-                    return {"type": "http.request", "body": body_bytes, "more_body": False}
-                request._receive = receive
 
-        return await call_next(request)
+            received_body = False
+            async def new_receive():
+                nonlocal received_body
+                if not received_body:
+                    received_body = True
+                    return {"type": "http.request", "body": body_bytes, "more_body": False}
+                else:
+                    return await receive()
+
+            await self.app(scope, new_receive, send)
+        else:
+            await self.app(scope, receive, send)
 
     def _contains_nosql_operators(self, data) -> bool:
         if isinstance(data, dict):

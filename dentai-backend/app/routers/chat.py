@@ -1,20 +1,35 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 from app.core.database import get_db
 from app.models.chat import Conversation, Message
 from app.models.user import User
 from app.schemas.chat import MessageCreate, ConversationResponse
 from app.dependencies import get_current_user
 from app.services.ai_service import stream_chat_response
+from app.core.limiter import limiter
 import uuid
+import re
 from datetime import datetime
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
-# FIX-08: Per-user rate limit on AI chat to prevent cost exhaustion
-limiter = Limiter(key_func=get_remote_address)
+def sanitize_chat_message(content: str) -> str:
+    """Sanitize and normalize user messages to prevent prompt injection payload persistence."""
+    # Normalize whitespaces
+    content = " ".join(content.strip().split())
+    # Identify high-risk prompt injection override instructions
+    injection_patterns = [
+        r"(?i)ignore\s+(?:all\s+)?prior\s+instructions",
+        r"(?i)ignore\s+(?:all\s+)?previous\s+instructions",
+        r"(?i)system\s+prompt\s+override",
+        r"(?i)override\s+system\s+instructions",
+        r"(?i)you\s+must\s+now\s+act\s+as",
+        r"(?i)disregard\s+(?:all\s+)?instructions",
+        r"(?i)new\s+system\s+role",
+    ]
+    for pattern in injection_patterns:
+        content = re.sub(pattern, "[removed instruction override attempt]", content)
+    return content
 
 @router.post("/message")
 async def send_message(
@@ -22,13 +37,23 @@ async def send_message(
     current_user: User = Depends(get_current_user),
     db = Depends(get_db)
 ):
+    # Sanitize message at route entry point
+    sanitized_msg = sanitize_chat_message(req.message)
+
     conv_id = req.conversation_id
     if not conv_id:
+        # Retention / storage growth abuse limit: Enforce maximum conversation limit (20)
+        conv_count = await db["conversations"].count_documents({"user_id": str(current_user.id), "is_deleted": False})
+        if conv_count >= 20:
+            raise HTTPException(
+                status_code=400,
+                detail="Maximum conversation limit reached (20). Please delete an existing conversation before starting a new one."
+            )
         conv_id = uuid.uuid4()
         new_conv = Conversation(
             id=conv_id,
             user_id=current_user.id,
-            title=req.message[:50]
+            title=sanitized_msg[:50]
         )
         await db["conversations"].insert_one(new_conv.to_dict())
     else:
@@ -40,12 +65,20 @@ async def send_message(
         })
         if not conv_doc:
             raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        # Enforce maximum messages limit per conversation (50)
+        msg_count = await db["messages"].count_documents({"conversation_id": str(uuid.UUID(str(conv_id)))})
+        if msg_count >= 50:
+            raise HTTPException(
+                status_code=400,
+                detail="Message limit reached for this conversation (50). Please start a new conversation."
+            )
             
     # Save user message
     user_msg = Message(
         conversation_id=conv_id,
         role="user",
-        content=req.message
+        content=sanitized_msg
     )
     await db["messages"].insert_one(user_msg.to_dict())
     
@@ -65,17 +98,40 @@ async def send_message(
         yield f"data: {json.dumps({'conversation_id': str(conv_id)})}\n\n"
         
         full_response = ""
-        async for chunk in stream_chat_response(req.message, prior_history): 
-            if "data: [DONE]" not in chunk:
-                try:
-                    data = json.loads(chunk.replace("data: ", ""))
-                    if "token" in data:
-                        full_response += data["token"]
-                    elif "content" in data:
-                        full_response += data["content"]
-                except:
-                    pass
-            yield chunk
+        # CRITICAL: Validate SSE format and schemas strictly. Halt stream on any error/malformation.
+        async for chunk in stream_chat_response(sanitized_msg, prior_history): 
+            if "data: [DONE]" in chunk:
+                yield chunk
+                continue
+
+            if not chunk.startswith("data: "):
+                # Stream corruption: yield safe error and terminate
+                yield f"data: {json.dumps({'token': 'AI response format error.'})}\n\n"
+                yield "data: [DONE]\n\n"
+                break
+
+            clean_chunk = chunk.replace("data: ", "").strip()
+            try:
+                data = json.loads(clean_chunk)
+                if "error" in data:
+                    yield f"data: {json.dumps({'token': 'AI provider service error.'})}\n\n"
+                    yield "data: [DONE]\n\n"
+                    break
+                
+                # Check for schema conformity
+                token = data.get("token") or data.get("content")
+                if token is None:
+                    yield f"data: {json.dumps({'token': 'AI invalid payload format.'})}\n\n"
+                    yield "data: [DONE]\n\n"
+                    break
+
+                full_response += token
+                yield f"data: {json.dumps({'token': token})}\n\n"
+            except (json.JSONDecodeError, KeyError, TypeError):
+                # Fail-closed: yield generic token on parse failure and terminate
+                yield f"data: {json.dumps({'token': 'AI response streaming failure.'})}\n\n"
+                yield "data: [DONE]\n\n"
+                break
             
         # Save assistant message
         if full_response:
@@ -153,3 +209,25 @@ async def get_conversation(
         "created_at": conv_doc["created_at"],
         "messages": messages
     }
+
+
+@router.delete("/conversations/{conversation_id}")
+async def delete_conversation(
+    conversation_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    # Enforce strict ownership check in the same query (IDOR Prevention)
+    conv_doc = await db["conversations"].find_one({
+        "_id": str(conversation_id),
+        "user_id": str(current_user.id),
+        "is_deleted": False
+    })
+    if not conv_doc:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+        
+    await db["conversations"].update_one(
+        {"_id": str(conversation_id)},
+        {"$set": {"is_deleted": True}}
+    )
+    return {"message": "Conversation deleted successfully"}

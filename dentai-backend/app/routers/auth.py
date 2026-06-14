@@ -5,8 +5,6 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from app.core.config import settings
 from app.core.database import get_db
@@ -23,6 +21,7 @@ from app.schemas.user import (
     UserResponse,
     UserUpdateRequest,
 )
+from app.core.limiter import limiter
 
 # Reuse the same scheme instance for token extraction in the logout endpoint
 _oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -30,9 +29,6 @@ _oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-# FIX-08: router-level limiter (shares key_func with app-level limiter)
-limiter = Limiter(key_func=get_remote_address)
 
 
 # ---------------------------------------------------------------------------

@@ -33,6 +33,12 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
     ]
 
+    def __init__(self, **values):
+        super().__init__(**values)
+        if self.ENVIRONMENT == "production":
+            # Strip localhost and insecure HTTP endpoints in production
+            self.CORS_ORIGINS = [orig for orig in self.CORS_ORIGINS if orig.startswith("https://")]
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

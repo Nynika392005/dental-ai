@@ -2,6 +2,7 @@ import base64
 import logging
 import asyncio
 import time
+import json
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Request
 
 from app.dependencies import get_current_user
@@ -15,7 +16,8 @@ router = APIRouter(prefix="/analysis", tags=["analysis"])
 
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
 ALLOWED_TASK_TYPES = {"tooth", "medicine", "food", "habit"}
-MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
+# Reduced from 5MB to 2MB to minimize base64 memory overhead and AI processing costs
+MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024  # 2 MB
 
 # Concurrency limiter to prevent DoS on processing resources
 concurrency_semaphore = asyncio.Semaphore(2)
@@ -29,28 +31,29 @@ async def scan_image(
     redis = Depends(get_redis)
 ):
     # --- Rate Limiting Checks ---
-    # IP-based rate limiting (10 scans per 60 seconds)
-    # User-based rate limiting (10 scans per 60 seconds)
-    ip_addr = request.client.host if request.client else "unknown"
+    # IP-based rate limiting (5 scans per 60 seconds)
+    # User-based rate limiting (5 scans per 60 seconds)
+    # Use proxy-safe IP key derivation
+    from app.core.limiter import get_ip_key
+    ip_addr = get_ip_key(request)
     current_time = int(time.time())
     
     ip_key = f"rate_limit:scan:ip:{ip_addr}"
     user_key = f"rate_limit:scan:user:{current_user.id}"
     
     # Custom atomic sliding window checking logic compatible with MockRedis and real Redis
-    for key, limit_val in [(ip_key, 10), (user_key, 10)]:
+    for key, limit_val in [(ip_key, 5), (user_key, 5)]:
         # Using a list string representation in redis to keep track of query timestamps
         current_data = await redis.get(key)
         timestamps = []
         if current_data:
             try:
-                import json
                 timestamps = [t for t in json.loads(current_data) if current_time - t < 60]
             except Exception:
                 pass
         
         if len(timestamps) >= limit_val:
-            raise HTTPException(status_code=429, detail="Too many upload scans. Limit is 10 per minute.")
+            raise HTTPException(status_code=429, detail="Too many upload scans. Limit is 5 per minute.")
         
         timestamps.append(current_time)
         await redis.setex(key, 120, json.dumps(timestamps))
