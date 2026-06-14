@@ -59,5 +59,6 @@ watchfiles==1.2.0
 websockets==16.0
 xxhash==3.7.0
 zstandard==0.25.0
-motor
-pymongo
+motor==3.7.0
+pymongo==4.13.0
+slowapi==0.1.9
