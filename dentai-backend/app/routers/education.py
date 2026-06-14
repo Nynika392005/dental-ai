@@ -58,12 +58,12 @@ async def get_article(
 ):
     try:
         val = uuid.UUID(identifier)
-        query: dict = {"_id": str(val)}
+        query: dict = {"_id": str(val), "is_published": True}
     except ValueError:
         # slug — sanitise to safe characters only
         if not identifier.replace("-", "").replace("_", "").isalnum():
             raise HTTPException(status_code=400, detail="Invalid article identifier.")
-        query = {"slug": identifier}
+        query = {"slug": identifier, "is_published": True}
 
     art_doc = await db["articles"].find_one(query)
     if not art_doc:
@@ -78,6 +78,11 @@ async def toggle_bookmark(
     current_user: User = Depends(get_current_user),
     db=Depends(get_db),
 ):
+    # Enforce check that article exists and is published before toggling bookmark
+    art_doc = await db["articles"].find_one({"_id": str(article_id), "is_published": True})
+    if not art_doc:
+        raise HTTPException(status_code=404, detail="Article not found")
+
     query = {"user_id": str(current_user.id), "article_id": str(article_id)}
     bookmark = await db["bookmarks"].find_one(query)
 
@@ -98,12 +103,13 @@ async def get_bookmarks(
     bm_cursor = db["bookmarks"].find({"user_id": str(current_user.id)})
     article_ids = []
     async for bm_doc in bm_cursor:
-        article_ids.append(bm_doc["article_id"])
+        article_ids.append(str(uuid.UUID(str(bm_doc["article_id"]))))
 
     if not article_ids:
         return []
 
-    art_cursor = db["articles"].find({"_id": {"$in": article_ids}})
+    # Only load bookmarks for articles that exist and are published
+    art_cursor = db["articles"].find({"_id": {"$in": article_ids}, "is_published": True})
     articles = []
     async for art_doc in art_cursor:
         articles.append(_map_article(art_doc))

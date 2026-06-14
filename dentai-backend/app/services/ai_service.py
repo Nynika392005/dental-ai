@@ -23,20 +23,69 @@ def get_client() -> Groq:
     return Groq(api_key=api_key)
 
 
-def extract_json(text: str) -> dict | None:
+import asyncio
+from pydantic import BaseModel, Field, constr
+from typing import Literal, Optional, List
+
+# Define strict Pydantic schemas for parsing LLM outputs securely
+class FoodAnalysisSchema(BaseModel):
+    impact_score: int = Field(..., ge=1, le=10)
+    analysis: constr(max_length=2000)
+    advice: constr(max_length=2000)
+
+class ToothAnalysisSchema(BaseModel):
+    findings: constr(max_length=2000)
+    recommendations: constr(max_length=2000)
+    urgency: Literal["urgent", "soon", "monitor"]
+
+class HabitAnalysisSchema(BaseModel):
+    detected_habit: constr(max_length=200)
+    confidence_score: int = Field(..., ge=1, le=100)
+    signs_observed: constr(max_length=2000)
+    long_term_risk: constr(max_length=2000)
+    prevention_tip: constr(max_length=2000)
+
+class MedicineAnalysisSchema(BaseModel):
+    name: constr(max_length=200)
+    purpose: constr(max_length=2000)
+    dosage: constr(max_length=1000)
+    side_effects: constr(max_length=2000)
+    warnings: constr(max_length=2000)
+
+class SymptomAnalysisResponseSchema(BaseModel):
+    ai_assessment: constr(max_length=2000)
+    urgency_level: Literal["urgent", "soon", "monitor"]
+
+
+def extract_json(text: str, schema) -> dict | None:
+    """Strictly loads JSON and validates it against the Pydantic schema; returns dict on success, None on error."""
     try:
         text = text.replace("```json", "").replace("```", "").strip()
-        match = re.search(r"\{.*\}", text, re.DOTALL)
+        # Fall back to regex ONLY to extract matching JSON block if outer wrapper text exists
+        match = re.search(r"(\{.*\})", text, re.DOTALL)
         if match:
-            return json.loads(match.group())
-        return json.loads(text)
+            parsed = json.loads(match.group(1))
+        else:
+            parsed = json.loads(text)
+        
+        # Strictly validate against schema
+        validated = schema(**parsed)
+        return validated.model_dump() if hasattr(validated, "model_dump") else validated.dict()
     except Exception:
         return None
 
 
 async def analyze_image_task(image_base64: str, task_type: str) -> dict:
-    # task_type is already validated by the caller (allow-list in the router)
     t_type = task_type.strip().lower()
+    
+    # Map task type to Pydantic validation schema
+    schema_map = {
+        "food": FoodAnalysisSchema,
+        "tooth": ToothAnalysisSchema,
+        "habit": HabitAnalysisSchema,
+        "medicine": MedicineAnalysisSchema
+    }
+    target_schema = schema_map.get(t_type)
 
     try:
         client = get_client()
@@ -44,23 +93,30 @@ async def analyze_image_task(image_base64: str, task_type: str) -> dict:
             f"You are a dental health AI. Analyze this {t_type} image for dental health relevance. "
             "Return ONLY a strict JSON object with relevant fields. No extra text."
         )
-        response = client.chat.completions.create(
-            model="meta-llama/llama-4-scout-17b-16e-instruct",
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"},
-                        },
-                    ],
-                }
-            ],
-            max_tokens=500,
+        
+        # Run blocking network call in a separate thread with a strict timeout to prevent thread blocking DoS
+        response = await asyncio.wait_for(
+            asyncio.to_thread(
+                client.chat.completions.create,
+                model="meta-llama/llama-4-scout-17b-16e-instruct",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"},
+                            },
+                        ],
+                    }
+                ],
+                max_tokens=500,
+            ),
+            timeout=15.0
         )
-        data = extract_json(response.choices[0].message.content)
+        
+        data = extract_json(response.choices[0].message.content, target_schema)
         if data:
             return data
     except Exception:
@@ -68,7 +124,7 @@ async def analyze_image_task(image_base64: str, task_type: str) -> dict:
         # the client; the raw exception may contain API key fragments or payload data.
         logger.error("AI Vision analysis failed", exc_info=False)
 
-    # Static mock fallback (dev/demo only)
+    # Static mock fallback (dev/demo only) - strictly validated under the schema before returning
     scenarios: dict[str, list[dict]] = {
         "food": [
             {"impact_score": 3, "analysis": "High sugar and acidity detected.", "advice": "Rinse with water after eating."},
@@ -111,7 +167,11 @@ async def analyze_image_task(image_base64: str, task_type: str) -> dict:
             },
         ],
     }
-    return random.choice(scenarios.get(t_type, [{"error": "Unknown scan type"}]))
+    
+    # Fallback must be valid too
+    fallback_choice = random.choice(scenarios.get(t_type))
+    # Double check fallback schema validation
+    return target_schema(**fallback_choice).model_dump() if hasattr(target_schema(**fallback_choice), "model_dump") else target_schema(**fallback_choice).dict()
 
 
 async def stream_chat_response(message: str, history: list):
@@ -144,12 +204,17 @@ async def stream_chat_response(message: str, history: list):
 
         messages.append({"role": "user", "content": message})
 
-        stream = client.chat.completions.create(
-            model=MODEL,
-            messages=messages,
-            stream=True,
-            max_tokens=1024,
-            temperature=0.7,
+        # Wrap in thread with timeout to avoid blocking main event loop
+        stream = await asyncio.wait_for(
+            asyncio.to_thread(
+                client.chat.completions.create,
+                model=MODEL,
+                messages=messages,
+                stream=True,
+                max_tokens=1024,
+                temperature=0.7,
+            ),
+            timeout=15.0
         )
 
         for chunk in stream:
@@ -179,23 +244,22 @@ async def analyze_symptoms(symptoms: list[str]) -> dict:
             "Return ONLY a JSON object: "
             '{"ai_assessment": "<string>", "urgency_level": "<urgent|soon|monitor>"}'
         )
-        response = client.chat.completions.create(
-            model=MODEL,
-            messages=[
-                {"role": "system", "content": "You are a dental health AI. Respond only with valid JSON. " + instruction},
-                {"role": "user", "content": user_message},
-            ],
-            max_tokens=300,
-            temperature=0.3,
+        response = await asyncio.wait_for(
+            asyncio.to_thread(
+                client.chat.completions.create,
+                model=MODEL,
+                messages=[
+                    {"role": "system", "content": "You are a dental health AI. Respond only with valid JSON. " + instruction},
+                    {"role": "user", "content": user_message},
+                ],
+                max_tokens=300,
+                temperature=0.3,
+            ),
+            timeout=15.0
         )
-        data = extract_json(response.choices[0].message.content)
-        if data and "ai_assessment" in data and "urgency_level" in data:
-            urgency = data["urgency_level"].lower().strip()
-            if urgency not in ("urgent", "soon", "monitor"):
-                urgency = "monitor"
-            # Truncate ai_assessment to a safe length
-            assessment_text = str(data["ai_assessment"])[:2000]
-            return {"ai_assessment": assessment_text, "urgency_level": urgency}
+        data = extract_json(response.choices[0].message.content, SymptomAnalysisResponseSchema)
+        if data:
+            return data
     except Exception:
         logger.error("Symptom analysis failed", exc_info=False)
 

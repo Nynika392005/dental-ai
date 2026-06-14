@@ -32,8 +32,12 @@ async def send_message(
         )
         await db["conversations"].insert_one(new_conv.to_dict())
     else:
-        # Verify conversation exists and belongs to user
-        conv_doc = await db["conversations"].find_one({"_id": str(conv_id), "user_id": str(current_user.id)})
+        # Verify conversation exists and belongs to user (IDOR prevention)
+        conv_doc = await db["conversations"].find_one({
+            "_id": str(uuid.UUID(str(conv_id))),
+            "user_id": str(current_user.id),
+            "is_deleted": False
+        })
         if not conv_doc:
             raise HTTPException(status_code=404, detail="Conversation not found")
             
@@ -45,8 +49,9 @@ async def send_message(
     )
     await db["messages"].insert_one(user_msg.to_dict())
     
-    # Fetch history of messages for this conversation (up to 20), excluding the just-saved user message
-    msg_cursor = db["messages"].find({"conversation_id": str(conv_id)}).sort("created_at", 1).limit(21)
+    # Fetch history of messages for this conversation (up to 20), excluding the just-saved user message.
+    # Note: we filter by conversation_id, but to be secure, we also enforce the conversation check above.
+    msg_cursor = db["messages"].find({"conversation_id": str(uuid.UUID(str(conv_id)))}).sort("created_at", 1).limit(21)
     history = []
     async for msg_doc in msg_cursor:
         history.append(Message(**msg_doc))
@@ -99,8 +104,9 @@ async def get_conversations(
     
     conversations = []
     async for conv_doc in conv_cursor:
-        # Fetch messages for this conversation
-        msg_cursor = db["messages"].find({"conversation_id": conv_doc["_id"]}).sort("created_at", 1)
+        # Fetch messages for this conversation, verifying UUID format and scoping strictly
+        conv_uuid_str = str(uuid.UUID(str(conv_doc["_id"])))
+        msg_cursor = db["messages"].find({"conversation_id": conv_uuid_str}).sort("created_at", 1)
         messages = []
         async for msg_doc in msg_cursor:
             messages.append({

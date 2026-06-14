@@ -45,6 +45,7 @@ class JSONCollection:
         self.db_path = db_path
         self.name = name
         self.lock = asyncio.Lock()
+        self.indexes = []
 
     def _read(self):
         if not os.path.exists(self.db_path):
@@ -119,6 +120,32 @@ class JSONCollection:
             elif "_id" not in clean_doc:
                 import uuid
                 clean_doc["_id"] = str(uuid.uuid4())
+
+            # Check uniqueness against configured indexes
+            for idx_keys, unique, partial_filter in self.indexes:
+                if unique:
+                    # Check if document matches partialFilterExpression (if any)
+                    if partial_filter and not self._match(clean_doc, partial_filter):
+                        continue
+                    
+                    # Construct matching query for existing docs
+                    conflict_query = {}
+                    for k in idx_keys:
+                        # index keys are a list of tuples like [("dentist_id", 1), ...]
+                        field = k[0] if isinstance(k, tuple) else k
+                        if field in clean_doc:
+                            conflict_query[field] = clean_doc[field]
+                    
+                    # If we have any fields to match, query current docs
+                    if conflict_query:
+                        # Add partial filter to conflict check to match only active docs
+                        if partial_filter:
+                            conflict_query.update(partial_filter)
+                        for existing in docs:
+                            if self._match(existing, conflict_query):
+                                from pymongo.errors import DuplicateKeyError
+                                raise DuplicateKeyError(f"Duplicate key error on index for: {conflict_query}")
+
             docs.append(clean_doc)
             self._write(docs)
             class InsertResult:
@@ -135,7 +162,26 @@ class JSONCollection:
                 elif "_id" not in clean_doc:
                     import uuid
                     clean_doc["_id"] = str(uuid.uuid4())
-            current_docs.extend(clean_docs)
+                
+                # Check index validation
+                for idx_keys, unique, partial_filter in self.indexes:
+                    if unique:
+                        if partial_filter and not self._match(clean_doc, partial_filter):
+                            continue
+                        conflict_query = {}
+                        for k in idx_keys:
+                            field = k[0] if isinstance(k, tuple) else k
+                            if field in clean_doc:
+                                conflict_query[field] = clean_doc[field]
+                        if conflict_query:
+                            if partial_filter:
+                                conflict_query.update(partial_filter)
+                            for existing in current_docs:
+                                if self._match(existing, conflict_query):
+                                    from pymongo.errors import DuplicateKeyError
+                                    raise DuplicateKeyError(f"Duplicate key error on index for: {conflict_query}")
+
+                current_docs.append(clean_doc)
             self._write(current_docs)
             return True
 
@@ -153,26 +199,30 @@ class JSONCollection:
         async with self.lock:
             docs = self._read()
             found = False
+            target_doc = None
             for doc in docs:
                 if self._match(doc, query):
-                    # Basic update logic supporting $set
-                    if "$set" in update:
-                        for k, v in update["$set"].items():
-                            doc[k] = self._clean_doc(v)
-                    else:
-                        for k, v in update.items():
-                            doc[k] = self._clean_doc(v)
+                    target_doc = doc
                     found = True
                     break
             
-            if not found and upsert:
-                # Basic upsert
+            # Prepare update representation
+            updated_doc = None
+            if found:
+                # Create a dry-run copy to validate uniqueness before updating the real store
+                import copy
+                updated_doc = copy.deepcopy(target_doc)
+                if "$set" in update:
+                    for k, v in update["$set"].items():
+                        updated_doc[k] = self._clean_doc(v)
+                else:
+                    for k, v in update.items():
+                        updated_doc[k] = self._clean_doc(v)
+            elif upsert:
                 new_doc = {}
-                # Extract fields from query
                 for k, v in query.items():
                     if not k.startswith("$"):
                         new_doc[k] = v
-                # Apply update
                 if "$set" in update:
                     for k, v in update["$set"].items():
                         new_doc[k] = self._clean_doc(v)
@@ -182,8 +232,40 @@ class JSONCollection:
                 if "_id" not in new_doc:
                     import uuid
                     new_doc["_id"] = str(uuid.uuid4())
-                docs.append(new_doc)
-            
+                updated_doc = new_doc
+
+            if updated_doc:
+                # Check index validation
+                for idx_keys, unique, partial_filter in self.indexes:
+                    if unique:
+                        if partial_filter and not self._match(updated_doc, partial_filter):
+                            continue
+                        conflict_query = {}
+                        for k in idx_keys:
+                            field = k[0] if isinstance(k, tuple) else k
+                            if field in updated_doc:
+                                conflict_query[field] = updated_doc[field]
+                        if conflict_query:
+                            if partial_filter:
+                                conflict_query.update(partial_filter)
+                            for existing in docs:
+                                # Skip checking uniqueness against self
+                                if existing.get("_id") == updated_doc.get("_id"):
+                                    continue
+                                if self._match(existing, conflict_query):
+                                    from pymongo.errors import DuplicateKeyError
+                                    raise DuplicateKeyError(f"Duplicate key error on index for: {conflict_query}")
+
+                if found:
+                    if "$set" in update:
+                        for k, v in update["$set"].items():
+                            target_doc[k] = self._clean_doc(v)
+                    else:
+                        for k, v in update.items():
+                            target_doc[k] = self._clean_doc(v)
+                else:
+                    docs.append(updated_doc)
+
             self._write(docs)
             return True
 
@@ -197,7 +279,8 @@ class JSONCollection:
         matched_docs = [doc for doc in docs if self._match(doc, query)]
         return len(matched_docs)
 
-    async def create_index(self, keys, unique=False):
+    async def create_index(self, keys, unique=False, partialFilterExpression=None):
+        self.indexes.append((keys, unique, partialFilterExpression))
         return True
 
     def _clean_doc(self, doc):

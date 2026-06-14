@@ -90,16 +90,16 @@ async def create_appointment(
     current_user: User = Depends(get_current_user),
     db=Depends(get_db),
 ):
-    dentist_doc = await db["dentists"].find_one({"_id": str(req.dentist_id)})
+    dentist_doc = await db["dentists"].find_one({"_id": str(uuid.UUID(str(req.dentist_id)))})
     if not dentist_doc:
         raise HTTPException(status_code=400, detail="Dentist not found")
-    if dentist_doc.get("clinic_id") != str(req.clinic_id):
+    if dentist_doc.get("clinic_id") != str(uuid.UUID(str(req.clinic_id))):
         raise HTTPException(status_code=400, detail="Dentist does not belong to selected clinic")
 
-    # SECURITY: double-booking prevention — same dentist + same slot
+    # Double check conflict in memory first (optional, but good)
     conflict = await db["appointments"].find_one(
         {
-            "dentist_id": str(req.dentist_id),
+            "dentist_id": str(uuid.UUID(str(req.dentist_id))),
             "scheduled_at": req.scheduled_at.isoformat()
             if hasattr(req.scheduled_at, "isoformat")
             else str(req.scheduled_at),
@@ -117,7 +117,13 @@ async def create_appointment(
         reason=req.reason,
         notes=req.notes,
     )
-    await db["appointments"].insert_one(appointment.to_dict())
+    
+    # Perform atomic insert inside unique compound index catch block
+    from pymongo.errors import DuplicateKeyError
+    try:
+        await db["appointments"].insert_one(appointment.to_dict())
+    except DuplicateKeyError:
+        raise HTTPException(status_code=409, detail="This time slot is already booked.")
 
     clinic_doc = await db["clinics"].find_one({"_id": str(req.clinic_id)})
     dentist_doc2 = await db["dentists"].find_one({"_id": str(req.dentist_id)})
@@ -196,7 +202,7 @@ async def get_appointments(
 
 @router.patch("/{appointment_id}/status")
 async def update_appointment_status(
-    appointment_id: str,
+    appointment_id: uuid.UUID,
     body: AppointmentStatusUpdate,  # FIX-06: typed schema, was raw dict
     current_user: User = Depends(get_current_user),
     db=Depends(get_db),
@@ -211,11 +217,29 @@ async def update_appointment_status(
     if not dentist_doc:
         raise HTTPException(status_code=403, detail="Dentist profile not found")
 
-    app_doc = await db["appointments"].find_one({"_id": appointment_id})
+    # DB query level validation: verify the appointment exists AND belongs to the requesting dentist in a single search check (IDOR Prevention)
+    app_doc = await db["appointments"].find_one({
+        "_id": str(appointment_id),
+        "dentist_id": str(dentist_doc["_id"])
+    })
     if not app_doc:
+        # Fail-closed: return 404 to avoid leaking existence of other dentists' appointments
         raise HTTPException(status_code=404, detail="Appointment not found")
-    if app_doc.get("dentist_id") != dentist_doc["_id"]:
-        raise HTTPException(status_code=403, detail="You do not have permission to update this appointment")
 
-    await db["appointments"].update_one({"_id": appointment_id}, {"$set": {"status": new_status}})
+    # If status is being updated to an active state, check unique constraint atomically
+    from pymongo.errors import DuplicateKeyError
+    if new_status in ["scheduled", "confirmed"]:
+        try:
+            await db["appointments"].update_one(
+                {"_id": str(appointment_id)},
+                {"$set": {"status": new_status}}
+            )
+        except DuplicateKeyError:
+            raise HTTPException(status_code=409, detail="This time slot is already booked.")
+    else:
+        await db["appointments"].update_one(
+            {"_id": str(appointment_id)},
+            {"$set": {"status": new_status}}
+        )
+
     return {"message": "Status updated", "status": new_status}

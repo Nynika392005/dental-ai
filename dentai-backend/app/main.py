@@ -82,6 +82,18 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("DentAI API starting up (environment=%s)", settings.ENVIRONMENT)
+    try:
+        from app.core.database import check_db_connection
+        db = await check_db_connection()
+        # Create unique compound index: dentist_id + scheduled_at where status in ('scheduled', 'confirmed')
+        await db["appointments"].create_index(
+            [("dentist_id", 1), ("scheduled_at", 1)],
+            unique=True,
+            partialFilterExpression={"status": {"$in": ["scheduled", "confirmed"]}}
+        )
+        logger.info("Created atomic booking compound index successfully.")
+    except Exception as e:
+        logger.error("Failed to create atomic booking compound index: %s", e)
     yield
     logger.info("DentAI API shutting down")
 
@@ -103,6 +115,60 @@ app = FastAPI(
     redoc_url=None if _is_production else "/redoc",
     openapi_url=None if _is_production else "/openapi.json",
 )
+
+# ---------------------------------------------------------------------------
+# NoSQL Injection Hardening (Operator Injection prevention WAF middleware)
+# Rejects requests with dict keys starting with $ (e.g. $ne, $gt, $regex, etc.)
+# ---------------------------------------------------------------------------
+class NoSQLInjectionMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next) -> Response:
+        # Check query parameters
+        for key, val in request.query_params.items():
+            if key.startswith("$"):
+                return JSONResponse(
+                    status_code=400,
+                    content={"detail": "Invalid operator key in query parameters."}
+                )
+        
+        # Check JSON body if content-type is json
+        content_type = request.headers.get("content-type", "")
+        if "application/json" in content_type:
+            # We must parse and read the body without consuming it permanently
+            body_bytes = await request.body()
+            if body_bytes:
+                try:
+                    import json
+                    body_json = json.loads(body_bytes)
+                    if self._contains_nosql_operators(body_json):
+                        return JSONResponse(
+                            status_code=400,
+                            content={"detail": "Invalid operator key in request body."}
+                        )
+                except Exception:
+                    # If JSON parsing fails here, allow normal processing (FastAPI will handle syntax errors)
+                    pass
+                
+                # Re-wrap request body to allow downstream handlers to read it
+                async def receive():
+                    return {"type": "http.request", "body": body_bytes, "more_body": False}
+                request._receive = receive
+
+        return await call_next(request)
+
+    def _contains_nosql_operators(self, data) -> bool:
+        if isinstance(data, dict):
+            for k, v in data.items():
+                if isinstance(k, str) and k.startswith("$"):
+                    return True
+                if self._contains_nosql_operators(v):
+                    return True
+        elif isinstance(data, list):
+            for item in data:
+                if self._contains_nosql_operators(item):
+                    return True
+        return False
+
+app.add_middleware(NoSQLInjectionMiddleware)
 
 # FIX-08: Attach the rate-limiter state and exception handler to the app
 app.state.limiter = limiter
