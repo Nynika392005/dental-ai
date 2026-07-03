@@ -3,20 +3,13 @@ import logging
 import os
 import re
 import asyncio
+import traceback
 from dotenv import load_dotenv
 from groq import Groq
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from app.core.config import settings
 
 load_dotenv()
 logger = logging.getLogger(__name__)
-
-def get_google_model(model_name="gemini-1.5-flash"):
-    api_key = os.getenv("GOOGLE_API_KEY") or settings.GOOGLE_API_KEY
-    if not api_key:
-        raise ValueError("GOOGLE_API_KEY is not configured")
-    return ChatGoogleGenerativeAI(model=model_name, google_api_key=api_key, temperature=0.1)
 
 def get_groq_client() -> Groq:
     api_key = os.getenv("GROQ_API_KEY") or settings.GROQ_API_KEY
@@ -35,34 +28,37 @@ def extract_json(text: str) -> dict | None:
         return None
 
 async def analyze_image_task(image_base64: str, task_type: str) -> dict:
-    """Production-grade vision analysis with real-time AI only."""
-    models = ["gemini-1.5-flash", "gemini-1.5-pro"]
-    
-    prompts = {
-        "food": "Analyze this food/drink for dental health. Return JSON with keys: impact_score (1-10), dental_analysis, preventative_advice.",
-        "tooth": "Analyze this dental photo. Return JSON with keys: findings, professional_recommendations, urgency (urgent/soon/monitor).",
-        "habit": "Analyze for oral habits (Bruxism, etc). Return JSON with keys: detected_habit, confidence_score, long_term_risks, clinical_advice.",
-        "medicine": "Analyze this medicine pack. Return JSON with keys: name, medical_purpose, dosage_instructions, safety_warnings."
-    }
+    """Production-grade vision analysis using Groq (Llama 3 Vision)."""
+    try:
+        client = get_groq_client()
 
-    last_error = "Unknown error"
-    for model_name in models:
-        try:
-            model = get_google_model(model_name)
-            content = [
-                {"type": "text", "text": prompts.get(task_type, "Analyze this dental image.")},
-                {"type": "image_url", "image_url": f"data:image/jpeg;base64,{image_base64}"}
-            ]
-            response = await asyncio.wait_for(model.ainvoke([HumanMessage(content=content)]), timeout=30.0)
-            data = extract_json(str(response.content))
-            if data:
-                return data
-        except Exception as e:
-            last_error = str(e)
-            logger.error(f"Vision model {model_name} failed: {e}")
+        prompts = {
+            "food": "Analyze this food/drink for dental health. Return JSON: {impact_score (1-10), dental_analysis, preventative_advice}.",
+            "tooth": "Analyze this dental photo. Return JSON: {findings, professional_recommendations, urgency (urgent/soon/monitor)}.",
+            "habit": "Analyze for oral habits (Bruxism, etc). Return JSON: {detected_habit, confidence_score, long_term_risks, clinical_advice}.",
+            "medicine": "Analyze this medicine pack. Return JSON: {name, medical_purpose, dosage_instructions, safety_warnings}."
+        }
 
-    # Production response: Return a structured error so the UI can handle it gracefully
-    return {"error": "AI_SERVICE_UNAVAILABLE", "message": "The dental analysis engine is currently busy. Please try again in a moment."}
+        # Using Groq's vision-capable model
+        completion = await asyncio.to_thread(
+            client.chat.completions.create,
+            model="llama-3.2-11b-vision-preview",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompts.get(task_type, "Analyze this dental image.")},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}
+                    ]
+                }
+            ],
+            response_format={"type": "json_object"}
+        )
+
+        return json.loads(completion.choices[0].message.content)
+    except Exception as e:
+        logger.error(f"Groq Vision failed: {e}")
+        return {"error": "AI_SERVICE_UNAVAILABLE", "message": "Analysis engine is busy. Please try again."}
 
 async def transcribe_audio(audio_file_path: str) -> str:
     """Production-grade audio transcription using Groq Whisper."""
@@ -82,51 +78,57 @@ async def transcribe_audio(audio_file_path: str) -> str:
         return ""
 
 async def analyze_symptoms(symptoms: list[str]) -> dict:
-    """Production-grade symptom analysis with real-time AI only."""
+    """Symptom analysis using Groq Llama 3."""
     try:
-        model = get_google_model("gemini-1.5-flash")
+        client = get_groq_client()
         instruction = (
-            "Analyze these dental symptoms and provide a brief assessment and urgency level. "
-            "Return ONLY a JSON object: "
-            '{"ai_assessment": "<string>", "urgency_level": "<urgent|soon|monitor>"}'
+            "Analyze these dental symptoms and provide assessment and urgency. "
+            "Return JSON: {\"ai_assessment\": \"string\", \"urgency_level\": \"urgent|soon|monitor\"}"
         )
         user_message = f"Symptoms: {', '.join(symptoms)}"
 
-        response = await asyncio.wait_for(
-            model.ainvoke([
-                SystemMessage(content="You are a dental health AI. Respond only with valid JSON."),
-                HumanMessage(content=f"{instruction}\n\n{user_message}")
-            ]),
-            timeout=15.0
+        completion = await asyncio.to_thread(
+            client.chat.completions.create,
+            model="llama3-8b-8192",
+            messages=[
+                {"role": "system", "content": "You are a dental AI. Respond only with JSON."},
+                {"role": "user", "content": f"{instruction}\n\n{user_message}"}
+            ],
+            response_format={"type": "json_object"}
         )
-
-        data = extract_json(str(response.content))
-        if data:
-            return data
+        return json.loads(completion.choices[0].message.content)
     except Exception as e:
         logger.error(f"Symptom analysis failed: {e}")
-
-    return {
-        "ai_assessment": "I am currently unable to analyze your symptoms. Please consult a licensed dentist for a proper evaluation.",
-        "urgency_level": "monitor"
-    }
+        return {"ai_assessment": "Consult a dentist.", "urgency_level": "monitor"}
 
 async def stream_chat_response(message: str, history: list):
-    """Secure streaming chat with system identity enforcement."""
+    """Streaming chat using Groq Llama 3."""
     try:
-        model = get_google_model("gemini-1.5-flash")
-        system_prompt = "You are DentAI, a clinical dental assistant. Provide accurate, evidence-based advice. Always advise seeing a dentist for diagnosis."
+        client = get_groq_client()
+        system_prompt = "You are DentAI, a professional clinical dental assistant. Always advise seeing a dentist."
 
-        messages = [SystemMessage(content=system_prompt)]
+        messages = [{"role": "system", "content": system_prompt}]
         for msg in history:
-            messages.append(HumanMessage(content=msg.content) if msg.role == "user" else AIMessage(content=msg.content))
-        messages.append(HumanMessage(content=message))
+            role = getattr(msg, 'role', 'user')
+            content = getattr(msg, 'content', '')
+            messages.append({"role": "user" if role == "user" else "assistant", "content": content})
 
-        async for chunk in model.astream(messages):
-            if chunk.content:
-                yield f"data: {json.dumps({'token': chunk.content})}\n\n"
+        messages.append({"role": "user", "content": message})
+
+        stream = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=messages,
+            stream=True,
+        )
+
+        for chunk in stream:
+            token = chunk.choices[0].delta.content
+            if token:
+                yield f"data: {json.dumps({'token': token})}\n\n"
+
         yield "data: [DONE]\n\n"
+
     except Exception as e:
         logger.error(f"Chat stream failed: {e}")
-        yield f"data: {json.dumps({'token': 'I apologize, but my connection is unstable. Please try again.'})}\n\n"
+        yield f"data: {json.dumps({'token': 'Connection issue. Please try again.'})}\n\n"
         yield "data: [DONE]\n\n"
