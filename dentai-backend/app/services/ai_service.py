@@ -273,3 +273,20 @@ async def analyze_symptoms(symptoms: list[str]) -> dict:
         "ai_assessment": "Based on your symptoms, we recommend consulting a dentist for a proper evaluation.",
         "urgency_level": "monitor",
     }
+
+async def transcribe_audio(audio_file_path: str) -> str:
+    """Uses Groq Whisper to transcribe audio accurately."""
+    try:
+        client = get_client()
+        with open(audio_file_path, "rb") as file:
+            transcription = await asyncio.to_thread(
+                client.audio.transcriptions.create,
+                file=(os.path.basename(audio_file_path), file.read()),
+                model="whisper-large-v3",
+                response_format="text",
+                language="en",
+            )
+            return str(transcription).strip()
+    except Exception as e:
+        logger.error("Transcription failed: %s", e)
+        return ""

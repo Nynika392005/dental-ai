@@ -1,17 +1,42 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, File, UploadFile
 from fastapi.responses import StreamingResponse
 from app.core.database import get_db
 from app.models.chat import Conversation, Message
 from app.models.user import User
 from app.schemas.chat import MessageCreate, ConversationResponse
 from app.dependencies import get_current_user
-from app.services.ai_service import stream_chat_response
+from app.services.ai_service import stream_chat_response, transcribe_audio
 from app.core.limiter import limiter
 import uuid
 import re
+import os
+import shutil
 from datetime import datetime
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+@router.post("/transcribe")
+async def transcribe_voice(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """Accurately transcribe audio using Groq Whisper."""
+    temp_dir = "temp_audio"
+    os.makedirs(temp_dir, exist_ok=True)
+    file_path = os.path.join(temp_dir, f"{uuid.uuid4()}_{file.filename}")
+
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        text = await transcribe_audio(file_path)
+        if not text:
+            raise HTTPException(status_code=400, detail="Could not transcribe audio")
+
+        return {"text": text}
+    finally:
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
 def sanitize_chat_message(content: str) -> str:
     """Sanitize and normalize user messages to prevent prompt injection payload persistence."""
