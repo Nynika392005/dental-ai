@@ -81,6 +81,36 @@ async def transcribe_audio(audio_file_path: str) -> str:
         logger.error(f"Transcription failed: {e}")
         return ""
 
+async def analyze_symptoms(symptoms: list[str]) -> dict:
+    """Production-grade symptom analysis with real-time AI only."""
+    try:
+        model = get_google_model("gemini-1.5-flash")
+        instruction = (
+            "Analyze these dental symptoms and provide a brief assessment and urgency level. "
+            "Return ONLY a JSON object: "
+            '{"ai_assessment": "<string>", "urgency_level": "<urgent|soon|monitor>"}'
+        )
+        user_message = f"Symptoms: {', '.join(symptoms)}"
+
+        response = await asyncio.wait_for(
+            model.ainvoke([
+                SystemMessage(content="You are a dental health AI. Respond only with valid JSON."),
+                HumanMessage(content=f"{instruction}\n\n{user_message}")
+            ]),
+            timeout=15.0
+        )
+
+        data = extract_json(str(response.content))
+        if data:
+            return data
+    except Exception as e:
+        logger.error(f"Symptom analysis failed: {e}")
+
+    return {
+        "ai_assessment": "I am currently unable to analyze your symptoms. Please consult a licensed dentist for a proper evaluation.",
+        "urgency_level": "monitor"
+    }
+
 async def stream_chat_response(message: str, history: list):
     """Secure streaming chat with system identity enforcement."""
     try:
