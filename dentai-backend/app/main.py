@@ -265,3 +265,10 @@ app.include_router(ai_analysis.router)
 @app.get("/")
 async def root():
     return {"message": "Welcome to DentAI API", "status": "online"}
+
+@app.get("/init-db")
+async def manual_init():
+    from app.core.database import engine, Base
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    return {"message": "Database initialized from Root"}
