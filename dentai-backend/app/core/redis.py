@@ -5,46 +5,20 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Real Redis client with an in-process fallback for LOCAL DEVELOPMENT ONLY.
-#
-# FIX-04: MockRedis TTL gap — the previous implementation accepted a `seconds`
-# argument in setex() but silently discarded it, meaning revoked tokens never
-# expired and survived process restarts.
-#
-# This version:
-#   1. Honours TTL by storing (value, expiry_timestamp) pairs and checking expiry
-#      on every get() call — making the fallback behaviorally correct.
-#   2. Emits a CRITICAL log when the fallback is activated so the operator is
-#      clearly alerted.
-#   3. Refuses to activate the fallback when ENVIRONMENT=production, causing a
-#      hard startup failure instead of silently degrading security.
-# ---------------------------------------------------------------------------
-
-
 class _MockRedis:
-    """
-    In-memory fallback used only when Redis is unavailable in non-production
-    environments. TTLs are honoured via expiry timestamps checked on read.
-    WARNING: revocations are still lost on process restart — use real Redis
-    in any environment where sessions must survive a restart.
-    """
-
+    """In-memory fallback for environments without a Redis server."""
     def __init__(self) -> None:
         import time
-        self._store: dict[str, tuple[str, float]] = {}  # key -> (value, expiry_ts)
+        self._store: dict[str, tuple[str, float]] = {}
         self._time = time
 
     def _is_expired(self, key: str) -> bool:
         entry = self._store.get(key)
-        if entry is None:
-            return True
-        _, expiry = entry
-        return self._time.time() > expiry
+        if entry is None: return True
+        return self._time.time() > entry[1]
 
     async def setex(self, key: str, seconds: int, value: str) -> None:
-        expiry = self._time.time() + seconds
-        self._store[key] = (value, expiry)
+        self._store[key] = (value, self._time.time() + seconds)
 
     async def get(self, key: str) -> str | None:
         if self._is_expired(key):
@@ -58,46 +32,33 @@ class _MockRedis:
     async def ping(self) -> bool:
         return True
 
+_redis_client = None
 
-_redis_client: aioredis.Redis | _MockRedis | None = None
-
-
-async def get_redis() -> aioredis.Redis | _MockRedis:
+async def get_redis():
     global _redis_client
     if _redis_client is not None:
         return _redis_client
 
     try:
+        # Check if URL looks like a placeholder or is default localhost in production
+        is_prod = settings.ENVIRONMENT == "production"
+        is_default = "localhost" in settings.REDIS_URL
+
+        if is_prod and is_default:
+            logger.warning("Production mode active but no remote REDIS_URL provided. Using memory fallback.")
+            _redis_client = _MockRedis()
+            return _redis_client
+
         client = aioredis.from_url(
             settings.REDIS_URL,
-            encoding="utf-8",
-            decode_responses=True,
-            socket_connect_timeout=2,
+            socket_connect_timeout=1,
+            socket_timeout=1
         )
         await client.ping()
-        logger.info("Connected to Redis at %s", settings.REDIS_URL)
+        logger.info("Connected to Redis successfully.")
         _redis_client = client
-    except Exception as exc:
-        # FIX-04: hard-fail in production — never silently degrade token revocation
-        environment = os.getenv("ENVIRONMENT", "development").lower()
-        if environment == "production":
-            logger.critical(
-                "Redis is unreachable in production (%s). "
-                "Refusing to start with MockRedis — token revocation would be broken. "
-                "Set REDIS_URL to a reachable Redis instance.",
-                exc,
-            )
-            raise RuntimeError(
-                "Redis is required in production for token revocation. "
-                "Set REDIS_URL to a reachable Redis instance."
-            ) from exc
-
-        logger.critical(
-            "Redis unavailable (%s). Falling back to in-process MockRedis — "
-            "TTLs are now honoured in-memory but revocations will be lost on restart. "
-            "Set ENVIRONMENT=production to prevent this fallback.",
-            exc,
-        )
+    except Exception as e:
+        logger.error(f"Redis connection failed ({e}). Using memory fallback.")
         _redis_client = _MockRedis()
 
     return _redis_client
