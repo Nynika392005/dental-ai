@@ -266,9 +266,27 @@ app.include_router(ai_analysis.router)
 async def root():
     return {"message": "Welcome to DentAI API", "status": "online"}
 
-@app.get("/init-db")
-async def manual_init():
-    from app.core.database import engine, Base
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    return {"message": "Database initialized from Root"}
+@app.get("/seed-db")
+async def seed_database():
+    """Emergency seed for MongoDB/JSON fallback"""
+    from app.core.database import get_db
+    from app.models.user import User
+    from app.core.security import get_password_hash
+    import uuid
+
+    db = await anext(get_db())
+
+    # Create a demo user: niki@gmail.com / password123
+    existing = await db["users"].find_one({"email": "niki@gmail.com"})
+    if not existing:
+        user = User(
+            full_name="Demo User",
+            email="niki@gmail.com",
+            phone="1234567890",
+            password_hash=get_password_hash("password123"),
+            is_verified=True
+        )
+        await db["users"].insert_one(user.to_dict())
+        return {"message": "Demo user created! Login with niki@gmail.com / password123"}
+
+    return {"message": "Database already has users."}
