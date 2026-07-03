@@ -35,19 +35,80 @@ export default function ActiveChatScreen() {
   const flatListRef = useRef<FlatList>(null);
 
   const toggleVoice = async () => {
-    Speech.stop();
-    setIsListening(true);
+    if (recording) {
+      await stopRecording();
+    } else {
+      await startRecording();
+    }
+  };
 
-    // AI Speaks to guide you
-    const instruction = "I am ready. Please tap the microphone icon on your keyboard to tell me your question.";
-    speak(instruction);
+  const startRecording = async () => {
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (permission.status !== 'granted') {
+        Alert.alert("Permission Required", "Please allow microphone access to use voice assist.");
+        return;
+      }
 
-    // Show a helpful alert with instructions
-    Alert.alert(
-      "Voice Assistant",
-      "To ask YOUR specific question:\n\n1. Tap the text input box\n2. Tap the Microphone icon on your keyboard\n3. Speak and press Send\n\nDentAI will then speak the answer back to you!",
-      [{ text: "OK", onPress: () => setIsListening(false) }]
-    );
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      setIsListening(true);
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      setRecording(recording);
+      speak("I am listening. Speak now.");
+    } catch (err) {
+      console.error('Failed to start recording', err);
+      setIsListening(false);
+    }
+  };
+
+  const stopRecording = async () => {
+    setIsListening(false);
+    if (!recording) return;
+
+    try {
+      setLoading(true);
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      setRecording(null);
+
+      if (uri) {
+        // --- REAL VOICE TRANSCRIPTION ---
+        // We upload your actual voice recording to Groq Whisper
+        const formData = new FormData();
+        // @ts-ignore
+        formData.append('file', {
+          uri: uri,
+          name: 'voice.m4a',
+          type: 'audio/m4a',
+        });
+
+        const res = await api.post('/chat/transcribe', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+
+        const transcribedText = res.data.text;
+
+        if (transcribedText) {
+          Alert.alert("Voice Captured", `You asked: "${transcribedText}"`, [
+            { text: "Ask AI", onPress: () => sendMessage(transcribedText) },
+            { text: "Cancel", onPress: () => setLoading(false), style: 'cancel' }
+          ]);
+        } else {
+          Alert.alert("Error", "Could not transcribe audio. Speak louder?");
+        }
+      }
+    } catch (err) {
+      console.error('Failed to stop recording', err);
+      Alert.alert("Error", "Voice server busy. Try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const speak = (text: string) => {
@@ -216,6 +277,15 @@ export default function ActiveChatScreen() {
         <Text style={[styles.messageText, isUser ? styles.userText : styles.aiText]}>
           {item.content}
         </Text>
+        {!isUser && (
+          <TouchableOpacity
+            style={styles.replayBtn}
+            onPress={() => speak(item.content)}
+          >
+            <Icon name="volume-high" size={16} color="#1A7FD4" />
+            <Text style={styles.replayText}>Listen Again</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
@@ -324,6 +394,20 @@ const styles = StyleSheet.create({
   messageText: { fontSize: 16, lineHeight: 24 },
   userText: { color: '#fff' },
   aiText: { color: '#1E293B' },
+  replayBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  replayText: {
+    fontSize: 12,
+    color: '#1A7FD4',
+    fontWeight: 'bold',
+    marginLeft: 4,
+  },
   inputContainer: {
     flexDirection: 'row',
     padding: 16,
