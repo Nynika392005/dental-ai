@@ -40,12 +40,12 @@ async def get_redis():
         return _redis_client
 
     try:
-        # Check if URL looks like a placeholder or is default localhost in production
-        is_prod = settings.ENVIRONMENT == "production"
-        is_default = "localhost" in settings.REDIS_URL
+        # Skip real Redis entirely if no external URL is configured —
+        # localhost:6379 is never available in a cloud deployment like Render.
+        is_default_local = "localhost" in settings.REDIS_URL or "127.0.0.1" in settings.REDIS_URL
 
-        if is_prod and is_default:
-            logger.warning("Production mode active but no remote REDIS_URL provided. Using memory fallback.")
+        if is_default_local:
+            logger.info("No external REDIS_URL configured. Using in-memory rate-limit store.")
             _redis_client = _MockRedis()
             return _redis_client
 
