@@ -32,32 +32,59 @@ async def analyze_image_task(image_base64: str, task_type: str) -> dict:
     try:
         client = get_groq_client()
 
+        # NOTE: Groq vision models do NOT support response_format parameter.
+        # JSON output is enforced via the prompt and parsed with extract_json().
         prompts = {
-            "food": "Analyze this food/drink for dental health. Return JSON: {impact_score (1-10), dental_analysis, preventative_advice}.",
-            "tooth": "Analyze this dental photo. Return JSON: {findings, professional_recommendations, urgency (urgent/soon/monitor)}.",
-            "habit": "Analyze for oral habits (Bruxism, etc). Return JSON: {detected_habit, confidence_score, long_term_risks, clinical_advice}.",
-            "medicine": "Analyze this medicine pack. Return JSON: {name, medical_purpose, dosage_instructions, safety_warnings}."
+            "food": (
+                "Analyze this food/drink image for dental health impact. "
+                "Respond ONLY with valid JSON in this exact format: "
+                "{\"impact_score\": <1-10>, \"dental_analysis\": \"<string>\", \"preventative_advice\": \"<string>\"}"
+            ),
+            "tooth": (
+                "Analyze this dental photo for visible issues. "
+                "Respond ONLY with valid JSON in this exact format: "
+                "{\"findings\": \"<string>\", \"professional_recommendations\": \"<string>\", \"urgency\": \"urgent|soon|monitor\"}"
+            ),
+            "habit": (
+                "Analyze this image for oral habits such as bruxism or nail-biting. "
+                "Respond ONLY with valid JSON in this exact format: "
+                "{\"detected_habit\": \"<string>\", \"confidence_score\": <0.0-1.0>, \"long_term_risks\": \"<string>\", \"clinical_advice\": \"<string>\"}"
+            ),
+            "medicine": (
+                "Analyze this medicine packaging. "
+                "Respond ONLY with valid JSON in this exact format: "
+                "{\"name\": \"<string>\", \"medical_purpose\": \"<string>\", \"dosage_instructions\": \"<string>\", \"safety_warnings\": \"<string>\"}"
+            ),
         }
 
-        # Using Groq's vision-capable model
+        prompt_text = prompts.get(task_type, "Analyze this dental image. Respond ONLY with valid JSON.")
+
         completion = await asyncio.to_thread(
             client.chat.completions.create,
-            model="llama-3.2-11b-vision-preview",
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
             messages=[
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": prompts.get(task_type, "Analyze this dental image.")},
+                        {"type": "text", "text": prompt_text},
                         {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}
                     ]
                 }
             ],
-            response_format={"type": "json_object"}
+            # response_format is intentionally omitted — not supported by Groq vision models
         )
 
-        return json.loads(completion.choices[0].message.content)
+        raw = completion.choices[0].message.content
+        parsed = extract_json(raw)
+        if parsed is not None:
+            return parsed
+
+        # If the model returned plain text instead of JSON, wrap it gracefully
+        logger.warning(f"Vision model returned non-JSON response for task '{task_type}': {raw[:200]}")
+        return {"findings": raw, "professional_recommendations": "Please consult a dentist.", "urgency": "monitor"}
+
     except Exception as e:
-        logger.error(f"Groq Vision failed: {e}")
+        logger.error(f"Groq Vision failed: {e}\n{traceback.format_exc()}")
         return {"error": "AI_SERVICE_UNAVAILABLE", "message": "Analysis engine is busy. Please try again."}
 
 async def transcribe_audio(audio_file_path: str) -> str:
@@ -78,7 +105,7 @@ async def transcribe_audio(audio_file_path: str) -> str:
         return ""
 
 async def analyze_symptoms(symptoms: list[str]) -> dict:
-    """Symptom analysis using Groq Llama 3."""
+    """Symptom analysis using Groq Llama."""
     try:
         client = get_groq_client()
         instruction = (
@@ -89,7 +116,7 @@ async def analyze_symptoms(symptoms: list[str]) -> dict:
 
         completion = await asyncio.to_thread(
             client.chat.completions.create,
-            model="llama3-8b-8192",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": "You are a dental AI. Respond only with JSON."},
                 {"role": "user", "content": f"{instruction}\n\n{user_message}"}

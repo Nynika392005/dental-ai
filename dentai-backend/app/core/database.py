@@ -16,12 +16,12 @@ async def check_db_connection():
         # settings.MONGODB_URL should be your MongoDB Atlas or Render Postgres string
         # If you are using PostgreSQL, we should revert to SQLAlchemy.
         # Given your current logic is NoSQL, we will enforce a real MongoDB connection.
-        client = AsyncIOMotorClient(settings.MONGODB_URL, serverSelectionTimeoutMS=5000)
+        client = AsyncIOMotorClient(settings.MONGODB_URL, serverSelectionTimeoutMS=3000)
 
         # Ping the server to verify connection
         await client.admin.command('ismaster')
 
-        db_name = settings.MONGODB_URL.split('/')[-1] or "dentai"
+        db_name = settings.MONGODB_URL.split('/')[-1].split('?')[0] or "dentai"
         _db_instance = client[db_name]
         logger.info(f"Connected to production database: {db_name}")
         return _db_instance

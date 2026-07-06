@@ -30,6 +30,12 @@ async def lifespan(app: FastAPI):
         logger.info("Database connection established.")
     except Exception as e:
         logger.error(f"Database connection failure: {e}")
+    try:
+        from app.core.redis import get_redis
+        await get_redis()
+        logger.info("Redis connection established.")
+    except Exception as e:
+        logger.error(f"Redis connection failure: {e}")
     yield
     logger.info("DentAI API shutting down")
 

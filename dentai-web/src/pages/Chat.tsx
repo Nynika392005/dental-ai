@@ -60,6 +60,13 @@ export const Chat: React.FC = () => {
   const recognitionRef = useRef<any>(null);
   const didAutoSend = useRef(false);
 
+  // Stop speech when leaving the chat page
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis?.cancel();
+    };
+  }, []);
+
   // Auto scroll
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });

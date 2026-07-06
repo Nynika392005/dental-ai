@@ -5,6 +5,7 @@ import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '../../lib/api';
+import { useAuthStore } from '../../stores/authStore';
 
 export default function SmartScanScreen() {
   const router = useRouter();
@@ -40,8 +41,16 @@ export default function SmartScanScreen() {
       formData.append('task_type', type);
       // @ts-ignore
       formData.append('file', { uri: image, name: 'photo.jpg', type: 'image/jpeg' });
+
+      // Explicitly include the auth token — passing a custom headers object can shadow
+      // the Authorization header injected by the axios interceptor on some RN/axios versions.
+      const token = useAuthStore.getState().token;
+
       const res = await api.post('/analysis/scan', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        }
       });
       console.log('SCAN RESULT:', res.data);
       setResult(res.data);
