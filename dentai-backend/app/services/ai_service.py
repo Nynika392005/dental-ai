@@ -37,23 +37,34 @@ async def analyze_image_task(image_base64: str, task_type: str) -> dict:
         prompts = {
             "food": (
                 "Analyze this food/drink image for dental health impact. "
-                "Respond ONLY with valid JSON in this exact format: "
-                "{\"impact_score\": <1-10>, \"dental_analysis\": \"<string>\", \"preventative_advice\": \"<string>\"}"
+                "If the food is not clearly visible, make your best assessment based on what you can see. "
+                "Never leave a field empty — always provide a meaningful answer. "
+                "Respond ONLY with valid JSON: "
+                "{\"impact_score\": <1-10>, \"dental_analysis\": \"<detailed analysis of dental impact>\", "
+                "\"preventative_advice\": \"<specific advice to protect teeth>\"}"
             ),
             "tooth": (
                 "Analyze this dental photo for visible issues. "
-                "Respond ONLY with valid JSON in this exact format: "
-                "{\"findings\": \"<string>\", \"professional_recommendations\": \"<string>\", \"urgency\": \"urgent|soon|monitor\"}"
+                "Describe what you observe in detail. If image quality is low, note that but still provide your best assessment. "
+                "Never leave a field empty. "
+                "Respond ONLY with valid JSON: "
+                "{\"findings\": \"<detailed description of what you see>\", "
+                "\"professional_recommendations\": \"<specific dental advice>\", \"urgency\": \"urgent|soon|monitor\"}"
             ),
             "habit": (
-                "Analyze this image for oral habits such as bruxism or nail-biting. "
-                "Respond ONLY with valid JSON in this exact format: "
-                "{\"detected_habit\": \"<string>\", \"confidence_score\": <0.0-1.0>, \"long_term_risks\": \"<string>\", \"clinical_advice\": \"<string>\"}"
+                "Analyze this image for signs of oral habits such as bruxism, nail-biting, or teeth grinding. "
+                "Provide your best assessment even if signs are subtle. Never leave a field empty. "
+                "Respond ONLY with valid JSON: "
+                "{\"detected_habit\": \"<habit name or 'No habit detected'>\", \"confidence_score\": <0.0-1.0>, "
+                "\"long_term_risks\": \"<potential risks if untreated>\", \"clinical_advice\": \"<recommended action>\"}"
             ),
             "medicine": (
-                "Analyze this medicine packaging. "
-                "Respond ONLY with valid JSON in this exact format: "
-                "{\"name\": \"<string>\", \"medical_purpose\": \"<string>\", \"dosage_instructions\": \"<string>\", \"safety_warnings\": \"<string>\"}"
+                "Analyze this medicine packaging image carefully. "
+                "Read all visible text. If any detail is not clearly visible, use your medical knowledge "
+                "to fill it in based on the medicine name/type you can identify — never leave a field empty. "
+                "Respond ONLY with valid JSON: "
+                "{\"name\": \"<full medicine name>\", \"medical_purpose\": \"<what condition it treats>\", "
+                "\"dosage_instructions\": \"<how and when to take it>\", \"safety_warnings\": \"<side effects and warnings>\"}"
             ),
         }
 
