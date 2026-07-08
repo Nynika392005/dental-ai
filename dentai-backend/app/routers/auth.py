@@ -67,9 +67,7 @@ async def register_user(request: Request, user_in: UserCreate, db=Depends(get_db
         phone=user_in.phone,
         password_hash=hashed_password,
         role=safe_role,
-        # SECURITY: accounts start unverified; set True only after OTP/email
-        # confirmation.  For this college project we keep True so the mobile
-        # app works, but the flag is now explicit and easy to enforce later.
+        platform=user_in.platform,
         is_verified=True,
     )
     await db["users"].insert_one(new_user.to_dict())

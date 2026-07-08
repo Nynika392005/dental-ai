@@ -35,6 +35,7 @@ class User:
                 self.role = RoleEnum.patient
                 
         self.is_verified = kwargs.get("is_verified", False)
+        self.platform = kwargs.get("platform", "web")  # "web" | "mobile"
         self.created_at = kwargs.get("created_at") or datetime.utcnow()
         self.updated_at = kwargs.get("updated_at") or datetime.utcnow()
 
@@ -47,6 +48,7 @@ class User:
             "password_hash": self.password_hash,
             "role": self.role.value if isinstance(self.role, enum.Enum) else self.role,
             "is_verified": self.is_verified,
+            "platform": self.platform,
             "created_at": self.created_at,
             "updated_at": self.updated_at
         }

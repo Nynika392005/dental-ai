@@ -64,6 +64,7 @@ export default function RegisterScreen() {
         phone,
         password,
         role,
+        platform: 'mobile',
         ...(role === 'dentist' && {
           clinic_name:    clinicName,
           clinic_address: clinicAddress,

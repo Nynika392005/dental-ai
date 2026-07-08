@@ -39,7 +39,8 @@ export const Register: React.FC = () => {
         specialization,
         bio,
         clinic_name: clinicName,
-        clinic_address: clinicAddress
+        clinic_address: clinicAddress,
+        platform: 'web',
       });
       setSuccess(true);
       setTimeout(() => navigate('/login'), 2000);

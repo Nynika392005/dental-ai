@@ -43,6 +43,9 @@ class UserCreate(BaseModel):
     # deeper layers.
     role: Literal["patient", "dentist"] = "patient"
 
+    # Which client is registering — for analytics only, never used for auth decisions
+    platform: Literal["web", "mobile"] = "web"
+
     # Dentist-only optional fields
     specialization: Optional[constr(max_length=100)] = None
     bio: Optional[constr(max_length=1000)] = None
