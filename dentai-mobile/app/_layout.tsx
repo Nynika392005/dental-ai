@@ -3,6 +3,11 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { useAuthStore } from '../stores/authStore';
 import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { api } from '../lib/api';
+
+function warmUpBackend() {
+  api.get('/').catch(() => {});
+}
 
 export default function RootLayout() {
   const { isLoading, token, checkAuth } = useAuthStore();
@@ -10,21 +15,15 @@ export default function RootLayout() {
   const router = useRouter();
 
   useEffect(() => {
+    warmUpBackend();
     checkAuth();
   }, []);
 
   useEffect(() => {
     if (isLoading) return;
-
     const inAuthGroup = segments[0] === '(auth)';
-
-    if (!token && !inAuthGroup) {
-      // Redirect to the login page.
-      router.replace('/(auth)/login');
-    } else if (token && inAuthGroup) {
-      // Redirect away from the login page.
-      router.replace('/(tabs)');
-    }
+    if (!token && !inAuthGroup) router.replace('/(auth)/login');
+    else if (token && inAuthGroup) router.replace('/(tabs)');
   }, [token, segments, isLoading]);
 
   if (isLoading) {
@@ -38,8 +37,13 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)"        options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)"        options={{ headerShown: false }} />
+        {/* Stack screens — NOT shown as tabs */}
+        <Stack.Screen name="chat/[id]"     options={{ headerShown: false, animation: 'slide_from_right' }} />
+        <Stack.Screen name="analysis/scan" options={{ headerShown: false, animation: 'slide_from_right' }} />
+        <Stack.Screen name="appointments/book" options={{ headerShown: false, animation: 'slide_from_right' }} />
+        <Stack.Screen name="education/[slug]"  options={{ headerShown: false, animation: 'slide_from_right' }} />
       </Stack>
     </SafeAreaProvider>
   );

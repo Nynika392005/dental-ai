@@ -28,7 +28,7 @@ export default function ChatListScreen() {
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity 
       style={styles.chatCard}
-      onPress={() => router.push(`/(tabs)/chat/${item.id}`)}
+      onPress={() => router.push(`/chat/${item.id}` as any)}
     >
       <View style={styles.chatIconContainer}>
         <Icon name="chat-outline" size={24} color="#1A7FD4" />
@@ -45,7 +45,7 @@ export default function ChatListScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Conversations</Text>
-        <TouchableOpacity onPress={() => router.push('/(tabs)/chat/new')} style={styles.newBtn}>
+        <TouchableOpacity onPress={() => router.push('/chat/new' as any)} style={styles.newBtn}>
           <Icon name="plus" size={20} color="#fff" />
           <Text style={styles.newBtnText}>New</Text>
         </TouchableOpacity>
@@ -62,7 +62,7 @@ export default function ChatListScreen() {
           <View style={styles.suggestions}>
             <Text style={styles.suggestionTitle}>Suggested Topics:</Text>
             {['Tooth Sensitivity', 'Best Brushing Techniques', 'Wisdom Teeth Pain'].map(topic => (
-              <TouchableOpacity key={topic} style={styles.suggestionChip} onPress={() => router.push(`/(tabs)/chat/new?q=${encodeURIComponent(topic)}`)}>
+              <TouchableOpacity key={topic} style={styles.suggestionChip} onPress={() => router.push(`/chat/new?q=${encodeURIComponent(topic)}` as any)}>
                 <Text style={styles.suggestionText}>{topic}</Text>
                 <Icon name="arrow-right-thin" size={16} color="#1A7FD4" />
               </TouchableOpacity>
