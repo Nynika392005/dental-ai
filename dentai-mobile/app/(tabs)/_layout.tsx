@@ -21,49 +21,65 @@ export default function TabLayout() {
         },
       }}
     >
+      {/* ── Shared: Home ───────────────────────────── */}
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => (
-            <Icon name="home-outline" size={24} color={color} />
-          ),
+          tabBarIcon: ({ color }) => <Icon name="home-outline" size={24} color={color} />,
         }}
       />
+
+      {/* ── Patient only: AI Chat ───────────────────── */}
       <Tabs.Screen
         name="chat/index"
         options={{
           title: 'AI Chat',
-          tabBarIcon: ({ color }) => (
-            <Icon name="chat-outline" size={24} color={color} />
-          ),
+          href: isDentist ? null : undefined,
+          tabBarIcon: ({ color }) => <Icon name="chat-outline" size={24} color={color} />,
         }}
       />
+
+      {/* ── Shared: Learn ──────────────────────────── */}
       <Tabs.Screen
         name="education/index"
         options={{
           title: 'Learn',
-          tabBarIcon: ({ color }) => (
-            <Icon name="book-open-outline" size={24} color={color} />
-          ),
+          tabBarIcon: ({ color }) => <Icon name="book-open-outline" size={24} color={color} />,
         }}
       />
+
+      {/* ── Shared: Appointments (label changes by role) */}
       <Tabs.Screen
         name="appointments/index"
         options={{
           title: isDentist ? 'Requests' : 'Book',
           tabBarIcon: ({ color }) => (
-            <Icon name={isDentist ? 'calendar-check-outline' : 'calendar-month-outline'} size={24} color={color} />
+            <Icon
+              name={isDentist ? 'calendar-check-outline' : 'calendar-month-outline'}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
+
+      {/* ── Patient only: Symptom Checker ──────────── */}
       <Tabs.Screen
         name="symptom-checker/index"
         options={{
           title: 'Symptoms',
-          tabBarIcon: ({ color }) => (
-            <Icon name="medical-bag" size={24} color={color} />
-          ),
+          href: isDentist ? null : undefined,
+          tabBarIcon: ({ color }) => <Icon name="medical-bag" size={24} color={color} />,
+        }}
+      />
+
+      {/* ── Shared: Profile (was "explore") ────────── */}
+      <Tabs.Screen
+        name="explore"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <Icon name="account-circle-outline" size={24} color={color} />,
         }}
       />
     </Tabs>
