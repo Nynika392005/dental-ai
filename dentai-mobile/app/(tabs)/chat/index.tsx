@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { api } from '../../../lib/api';
 
@@ -10,11 +10,15 @@ export default function ChatListScreen() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
-    fetchConversations();
-  }, []);
+  // Reload every time the tab comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchConversations();
+    }, [])
+  );
 
   const fetchConversations = async () => {
+    setLoading(true);
     try {
       const res = await api.get('/chat/conversations');
       setConversations(res.data);
