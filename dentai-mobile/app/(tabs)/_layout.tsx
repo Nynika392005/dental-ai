@@ -1,7 +1,11 @@
 import { Tabs } from 'expo-router';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
+import { useAuthStore } from '../../stores/authStore';
 
 export default function TabLayout() {
+  const { user } = useAuthStore();
+  const isDentist = user?.role === 'dentist';
+
   return (
     <Tabs
       screenOptions={{
@@ -47,9 +51,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="appointments/index"
         options={{
-          title: 'Book',
+          title: isDentist ? 'Requests' : 'Book',
           tabBarIcon: ({ color }) => (
-            <Icon name="calendar-month-outline" size={24} color={color} />
+            <Icon name={isDentist ? 'calendar-check-outline' : 'calendar-month-outline'} size={24} color={color} />
           ),
         }}
       />
