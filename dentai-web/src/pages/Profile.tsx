@@ -100,7 +100,7 @@ export const Profile: React.FC = () => {
             <label className="form-label">Full Name</label>
             <div style={{ position: 'relative' }}>
               <UserIcon size={15} style={{ position: 'absolute', left: '14px', top: '15px', color: '#94a3b8' }} />
-              <input type="text" className="form-input" style={{ paddingLeft: '40px' }}
+              <input id="profile-fullName" type="text" className="form-input" style={{ paddingLeft: '40px' }}
                 value={fullName} onChange={e => setFullName(e.target.value)} required />
             </div>
           </div>
@@ -119,7 +119,7 @@ export const Profile: React.FC = () => {
             <label className="form-label">Phone Number</label>
             <div style={{ position: 'relative' }}>
               <Phone size={15} style={{ position: 'absolute', left: '14px', top: '15px', color: '#94a3b8' }} />
-              <input type="tel" className="form-input" style={{ paddingLeft: '40px' }}
+              <input id="profile-phone" type="tel" className="form-input" style={{ paddingLeft: '40px' }}
                 value={phone} onChange={e => setPhone(e.target.value)} required />
             </div>
           </div>
@@ -178,7 +178,7 @@ export const Profile: React.FC = () => {
             </>
           )}
 
-          <button type="submit" className="auth-btn" disabled={loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '8px' }}>
+          <button id="profile-save" type="submit" className="auth-btn" disabled={loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '8px' }}>
             <Save size={16} />
             {loading ? 'Saving...' : 'Save Changes'}
           </button>

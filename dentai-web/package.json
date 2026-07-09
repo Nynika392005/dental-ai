@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "node deploy.cjs",
-    "test:e2e": "cd selenium-tests && npm install && npm run login"
+    "test:e2e": "cd selenium-tests && npm install && npm run login",
+    "test:e2e-report": "cd selenium-tests && npm install && node test-runner.js"
   },
   "dependencies": {
     "axios": "^1.17.0",
