@@ -182,7 +182,7 @@ export const Register: React.FC = () => {
             </div>
           )}
 
-          <button type="submit" className="auth-btn" disabled={loading || success}>
+          <button id="register-button" type="submit" className="auth-btn" disabled={loading || success}>
             {loading ? 'Creating...' : 'Register'}
           </button>
         </form>
