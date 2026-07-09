@@ -43,9 +43,20 @@ export const Register: React.FC = () => {
         platform: 'web',
       });
       setSuccess(true);
-      setTimeout(() => navigate('/login'), 2000);
+      setTimeout(() => navigate('/dashboard'), 1500);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Registration failed. Please check inputs and try again.');
+      const detail = err.response?.data?.detail;
+      if (Array.isArray(detail)) {
+        // Pydantic validation errors come as an array
+        setError(detail.map((e: any) => {
+          const field = e.loc ? e.loc.slice(1).join('.') : '';
+          return `${field ? field + ': ' : ''}${e.msg}`;
+        }).join(' | '));
+      } else if (typeof detail === 'string') {
+        setError(detail);
+      } else {
+        setError('Registration failed. Please check your inputs and try again.');
+      }
     } finally {
       setLoading(false);
     }

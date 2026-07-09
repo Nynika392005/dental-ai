@@ -70,6 +70,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         role,
         ...dentistDetails
       });
+      // Auto-login after registration
+      await login(email, password);
     } catch (error) {
       console.error('Registration error', error);
       throw error;
