@@ -1,0 +1,46 @@
+name: Selenium E2E Login Testing
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: 'dentai-web/package-lock.json'
+
+    - name: Install Frontend Dependencies
+      run: |
+        cd dentai-web
+        npm ci
+
+    - name: Install Selenium Test Dependencies
+      run: |
+        cd dentai-web/selenium-tests
+        npm ci
+
+    - name: Install Google Chrome and ChromeDriver
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
+        # Chrome options: headless setup
+        
+    - name: Run Selenium Tests
+      env:
+        CI: true
+        TEST_URL: https://Nynika392005.github.io/dental-ai/#/login
+      run: |
+        cd dentai-web/selenium-tests
+        npm test

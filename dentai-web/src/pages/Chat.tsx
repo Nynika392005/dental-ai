@@ -11,7 +11,6 @@ import {
   Sparkles,
   Volume2,
   Clock,
-  Trash2,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';

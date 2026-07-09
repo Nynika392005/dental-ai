@@ -1,0 +1,15 @@
+{
+  "name": "dentai-selenium-tests",
+  "version": "1.0.0",
+  "description": "Selenium E2E tests for DentAI",
+  "type": "commonjs",
+  "scripts": {
+    "test": "mocha tests/**/*.test.js --timeout 20000",
+    "login": "mocha tests/login.test.js --timeout 30000"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "mocha": "^11.1.0",
+    "selenium-webdriver": "^4.28.1"
+  }
+}

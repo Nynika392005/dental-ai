@@ -23,6 +23,7 @@ export const Login: React.FC = () => {
     } catch (err: any) {
       setError(
         err.response?.data?.detail || 
+        err.message ||
         'Invalid email or password. Please try again.'
       );
     } finally {
@@ -78,7 +79,7 @@ export const Login: React.FC = () => {
             </div>
           </div>
 
-          <button type="submit" className="auth-btn" disabled={loading}>
+          <button id="login-button" type="submit" className="auth-btn" disabled={loading}>
             {loading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>

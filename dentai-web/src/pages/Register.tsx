@@ -55,7 +55,7 @@ export const Register: React.FC = () => {
       } else if (typeof detail === 'string') {
         setError(detail);
       } else {
-        setError('Registration failed. Please check your inputs and try again.');
+        setError(err.message || 'Registration failed. Please check your inputs and try again.');
       }
     } finally {
       setLoading(false);

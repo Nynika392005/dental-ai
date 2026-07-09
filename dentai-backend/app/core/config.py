@@ -31,6 +31,7 @@ class Settings(BaseSettings):
         "http://localhost:5175",
         "http://localhost:3000",
         "http://127.0.0.1:5173",
+        "https://nynika392005.github.io",
     ]
 
     def __init__(self, **values):

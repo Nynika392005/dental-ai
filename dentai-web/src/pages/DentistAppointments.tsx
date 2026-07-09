@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
-import { Calendar, Clock, User as UserIcon, CheckCircle, XCircle, Search, Filter } from 'lucide-react';
+import { Calendar, Clock, User as UserIcon, CheckCircle, XCircle, Search } from 'lucide-react';
 
 interface Appointment {
   id: string;
