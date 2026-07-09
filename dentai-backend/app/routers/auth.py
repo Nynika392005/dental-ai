@@ -51,8 +51,7 @@ async def register_user(request: Request, user_in: UserCreate, db=Depends(get_db
         {"$or": [{"email": user_in.email}, {"phone": user_in.phone}]}
     )
     if existing:
-        # SECURITY: same message for both email and phone to avoid enumeration
-        raise HTTPException(status_code=400, detail="Registration failed. Please check your details.")
+        raise HTTPException(status_code=400, detail="An account with this email or phone number already exists. Please log in instead.")
 
     hashed_password = get_password_hash(user_in.password)
 

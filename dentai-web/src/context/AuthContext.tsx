@@ -72,8 +72,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       // Auto-login after registration
       await login(email, password);
-    } catch (error) {
-      console.error('Registration error', error);
+    } catch (error: any) {
+      console.error('Registration error', error.response?.data);
       throw error;
     }
   };
