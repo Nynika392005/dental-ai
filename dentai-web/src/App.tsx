@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { api } from './services/api';
 import { Sidebar } from './components/Sidebar';
 import { Navbar } from './components/Navbar';
 import { LandingPage } from './pages/LandingPage';
@@ -99,6 +100,10 @@ const AppLayout: React.FC = () => {
 };
 
 export default function App() {
+  useEffect(() => {
+    api.get('/').catch(() => {}); // wake Render on page load
+  }, []);
+
   return (
     <AuthProvider>
       <Router>
