@@ -59,12 +59,18 @@ async def analyze_image_task(image_base64: str, task_type: str) -> dict:
                 "\"long_term_risks\": \"<potential risks if untreated>\", \"clinical_advice\": \"<recommended action>\"}"
             ),
             "medicine": (
-                "Analyze this medicine packaging image carefully. "
-                "Read all visible text. If any detail is not clearly visible, use your medical knowledge "
-                "to fill it in based on the medicine name/type you can identify — never leave a field empty. "
+                "You are a pharmaceutical identification expert. Analyze this image carefully. "
+                "If it shows medicine packaging, read all visible text. "
+                "If it shows a tablet or pill directly, identify it by its physical characteristics: "
+                "shape (round/oval/capsule), color, size, any imprint codes, letters, or numbers stamped on it. "
+                "Use your pharmaceutical knowledge to identify the medicine based on appearance alone if no text is visible. "
+                "Always provide complete information — never leave any field empty. "
+                "If you cannot identify it with certainty, provide your best assessment with a note. "
                 "Respond ONLY with valid JSON: "
-                "{\"name\": \"<full medicine name>\", \"medical_purpose\": \"<what condition it treats>\", "
-                "\"dosage_instructions\": \"<how and when to take it>\", \"safety_warnings\": \"<side effects and warnings>\"}"
+                "{\"name\": \"<medicine name or best identification>\", "
+                "\"medical_purpose\": \"<what condition it treats>\", "
+                "\"dosage_instructions\": \"<standard dosage and administration>\", "
+                "\"safety_warnings\": \"<side effects, contraindications, and warnings>\"}"
             ),
         }
 
