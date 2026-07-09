@@ -40,7 +40,7 @@ jobs:
     - name: Run Selenium Tests
       env:
         CI: true
-        TEST_URL: https://Nynika392005.github.io/dental-ai/#/login
+        TEST_URL: https://Nynika392005.github.io/dental-ai/
       run: |
         cd dentai-web/selenium-tests
         npm test
