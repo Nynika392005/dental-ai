@@ -61,7 +61,7 @@ export const SymptomChecker: React.FC = () => {
     
     const formattedSymptoms = [
       ...selectedSymptoms,
-      `Self-reported Pain Level: ${painLevel}/10`
+      `Pain level ${painLevel} out of 10`
     ];
 
     try {
@@ -71,7 +71,10 @@ export const SymptomChecker: React.FC = () => {
       setResult(res.data);
       setStep(3);
     } catch (err: any) {
-      setError('Failed to analyze symptoms. Please make sure Render backend is running.');
+      const detail = err.response?.data?.detail;
+      setError(Array.isArray(detail)
+        ? detail.map((e: any) => e.msg).join(', ')
+        : detail || 'Failed to analyze symptoms. Please try again.');
     } finally {
       setLoading(false);
     }
