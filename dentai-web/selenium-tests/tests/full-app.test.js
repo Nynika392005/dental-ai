@@ -106,15 +106,18 @@ describe('DentAI Complete End-to-End Application Testing', function () {
     // Sign out to prepare for patient flows
     const logoutButton = await driver.wait(
       until.elementLocated(By.className('logout-btn')),
-      5000,
+      10000,
       'Logout button not found'
     );
+    await driver.executeScript("arguments[0].scrollIntoView(true);", logoutButton);
+    await driver.sleep(500);
     await logoutButton.click();
-    await driver.wait(until.urlContains('/login'), 5000);
+    await driver.wait(until.urlContains('/login'), 15000, 'Logout did not redirect to /login within 15s');
     await resetSession();
   });
 
   it('2. Should register a new Patient and load the Patient Portal', async function () {
+    await resetSession();
     const registerUrl = `${baseTestUrl.replace(/\/$/, '')}/#/register`;
     console.log(`Navigating to register page: ${registerUrl}`);
     await driver.get(registerUrl);
@@ -158,9 +161,11 @@ describe('DentAI Complete End-to-End Application Testing', function () {
     console.log('Navigating to Symptom Checker...');
     const symptomLink = await driver.wait(
       until.elementLocated(By.css('a[href="#/symptom-checker"]')),
-      5000,
+      10000,
       'Symptom Checker navigation link not found'
     );
+    await driver.executeScript("arguments[0].scrollIntoView(true);", symptomLink);
+    await driver.sleep(500);
     await symptomLink.click();
 
     // Step 1: Select symptoms
@@ -204,9 +209,11 @@ describe('DentAI Complete End-to-End Application Testing', function () {
     console.log('Navigating to Appointment booking...');
     const appointmentLink = await driver.wait(
       until.elementLocated(By.css('a[href="#/appointments"]')),
-      5000,
+      10000,
       'Book Visit navigation link not found'
     );
+    await driver.executeScript("arguments[0].scrollIntoView(true);", appointmentLink);
+    await driver.sleep(500);
     await appointmentLink.click();
 
     // Select Clinic
@@ -275,9 +282,11 @@ describe('DentAI Complete End-to-End Application Testing', function () {
     // Sidebar profile container link
     const profileLink = await driver.wait(
       until.elementLocated(By.className('sidebar-profile')),
-      5000,
+      10000,
       'Profile navigation container not found'
     );
+    await driver.executeScript("arguments[0].scrollIntoView(true);", profileLink);
+    await driver.sleep(500);
     await profileLink.click();
 
     // Update Full Name
@@ -312,12 +321,15 @@ describe('DentAI Complete End-to-End Application Testing', function () {
 
     // Sign out patient
     const logoutButton = await driver.findElement(By.className('logout-btn'));
+    await driver.executeScript("arguments[0].scrollIntoView(true);", logoutButton);
+    await driver.sleep(500);
     await logoutButton.click();
-    await driver.wait(until.urlContains('/login'), 5000);
+    await driver.wait(until.urlContains('/login'), 15000, 'Logout did not redirect to /login within 15s');
     await resetSession();
   });
 
   it('6. Dentist should log in and see the patient scheduled appointment', async function () {
+    await resetSession();
     const loginUrl = `${baseTestUrl.replace(/\/$/, '')}/#/login`;
     console.log(`Navigating to login page: ${loginUrl}`);
     await driver.get(loginUrl);
@@ -348,9 +360,11 @@ describe('DentAI Complete End-to-End Application Testing', function () {
     console.log('Checking Dentist Appointments list...');
     const appLink = await driver.wait(
       until.elementLocated(By.css('a[href="#/appointments"]')),
-      5000,
+      10000,
       'Dentist Appointments link not found'
     );
+    await driver.executeScript("arguments[0].scrollIntoView(true);", appLink);
+    await driver.sleep(500);
     await appLink.click();
 
     // Check if the scheduled appointment is displayed

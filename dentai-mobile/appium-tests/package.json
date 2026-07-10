@@ -1,0 +1,16 @@
+{
+  "name": "dentai-appium-tests",
+  "version": "1.0.0",
+  "description": "Appium E2E mobile tests for DentAI",
+  "main": "index.js",
+  "scripts": {
+    "test": "wdio run wdio.conf.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@wdio/local-runner": "^9.0.8",
+    "@wdio/mocha-framework": "^9.0.7",
+    "@wdio/spec-reporter": "^9.0.7",
+    "webdriverio": "^9.0.8"
+  }
+}
