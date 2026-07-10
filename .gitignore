@@ -32,7 +32,7 @@ var/
 sdist/
 develop-eggs/
 .installed.cfg
-lib/
+/dentai-backend/lib/
 lib64/
 *.so
 
