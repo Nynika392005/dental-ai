@@ -42,20 +42,7 @@ function PatientDashboard() {
         <Text style={styles.name}>{user?.full_name || 'Patient'}</Text>
       </View>
 
-      {/* Health Score Card */}
-      <View style={styles.healthScoreCard}>
-        <View style={styles.scoreInfo}>
-          <Text style={styles.scoreTitle}>Oral Health Score</Text>
-          <Text style={styles.scoreSubtitle}>Based on your last checkup</Text>
-          <View style={styles.scoreBadge}>
-            <Text style={styles.scoreValue}>85</Text>
-            <Text style={styles.scoreTotal}>/100</Text>
-          </View>
-        </View>
-        <View style={styles.scoreGraph}>
-          <Icon name="chart-donut" size={80} color="#1A7FD4" />
-        </View>
-      </View>
+
 
       {/* Quick Actions */}
       <View style={styles.actionsGrid}>

@@ -42,7 +42,8 @@
     ],
     "experiments": {
       "typedRoutes": true,
-      "reactCompiler": false
+      "reactCompiler": false,
+      "baseUrl": "/dental-ai/mobile"
     },
     "extra": {
       "router": {},

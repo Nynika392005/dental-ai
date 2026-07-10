@@ -12,7 +12,6 @@ import {
   ChevronRight, 
   Flame, 
   Sparkles,
-  Smile,
   Mic,
   Activity
 } from 'lucide-react';
@@ -88,20 +87,7 @@ export const Dashboard: React.FC = () => {
       <div className="dashboard-grid">
         {/* Left Column */}
         <div>
-          {/* Health Score Card */}
-          <div className="health-score-card">
-            <div className="score-details">
-              <h3>Oral Health Score</h3>
-              <p>Based on your last assessment checklist</p>
-              <div className="score-badge">
-                <span className="score-num">85</span>
-                <span className="score-total">/100</span>
-              </div>
-            </div>
-            <div className="score-visual">
-              <Smile size={48} />
-            </div>
-          </div>
+
 
           {/* Quick Actions Grid */}
           <div className="quick-actions-grid">
