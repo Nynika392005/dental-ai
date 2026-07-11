@@ -34,15 +34,23 @@ export default function LoginScreen() {
     } catch (error: any) {
       let errorMessage = 'An error occurred';
       if (error.response?.data?.detail) {
-        if (typeof error.response.data.detail === 'string') {
-          errorMessage = error.response.data.detail;
-        } else if (Array.isArray(error.response.data.detail)) {
-          errorMessage = error.response.data.detail.map((err: any) => {
+        const detail = error.response.data.detail;
+        if (typeof detail === 'string') {
+          errorMessage = detail;
+        } else if (Array.isArray(detail)) {
+          errorMessage = detail.map((err: any) => {
+            let errorMsg = err.msg || '';
+            // Strip raw Pydantic/FastAPI validation wrapper prefix
+            errorMsg = errorMsg.replace(/^Value error,\s*/, '');
             const field = err.loc ? err.loc.slice(1).join('.') : '';
-            return `${field ? field + ': ' : ''}${err.msg}`;
+            // Avoid repeating the field name if the message already includes it
+            if (field && !errorMsg.toLowerCase().includes(field.toLowerCase())) {
+              return `${field}: ${errorMsg}`;
+            }
+            return errorMsg;
           }).join('\n');
         } else {
-          errorMessage = JSON.stringify(error.response.data.detail);
+          errorMessage = JSON.stringify(detail);
         }
       } else if (error.message) {
         errorMessage = error.message;
@@ -67,6 +75,7 @@ export default function LoginScreen() {
           autoCapitalize="none"
           value={email}
           onChangeText={setEmail}
+          testID="email-input"
         />
         
         <TextInput
@@ -76,9 +85,10 @@ export default function LoginScreen() {
           secureTextEntry
           value={password}
           onChangeText={setPassword}
+          testID="password-input"
         />
         
-        <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+        <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading} testID="login-button">
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Sign In</Text>}
         </TouchableOpacity>
         

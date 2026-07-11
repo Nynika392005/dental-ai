@@ -87,9 +87,26 @@ export default function RegisterScreen() {
     } catch (error: any) {
       let msg = 'Registration failed. Please try again.';
       if (error.response?.data?.detail) {
-        msg = typeof error.response.data.detail === 'string'
-          ? error.response.data.detail
-          : JSON.stringify(error.response.data.detail);
+        const detail = error.response.data.detail;
+        if (typeof detail === 'string') {
+          msg = detail;
+        } else if (Array.isArray(detail)) {
+          msg = detail.map((err: any) => {
+            let errorMsg = err.msg || '';
+            // Strip raw Pydantic/FastAPI validation wrapper prefix
+            errorMsg = errorMsg.replace(/^Value error,\s*/, '');
+            const field = err.loc ? err.loc.slice(1).join('.') : '';
+            // Avoid repeating the field name if the message already includes it
+            if (field && !errorMsg.toLowerCase().includes(field.toLowerCase())) {
+              return `${field}: ${errorMsg}`;
+            }
+            return errorMsg;
+          }).join('\n');
+        } else {
+          msg = JSON.stringify(detail);
+        }
+      } else if (error.message) {
+        msg = error.message;
       }
       Alert.alert('Registration Failed', msg);
     } finally {

@@ -6,8 +6,8 @@
   "scripts": {
     "test": "wdio run wdio.conf.js"
   },
-  "dependencies": {},
   "devDependencies": {
+    "@wdio/cli": "^9.29.1",
     "@wdio/local-runner": "^9.0.8",
     "@wdio/mocha-framework": "^9.0.7",
     "@wdio/spec-reporter": "^9.0.7",
