@@ -11,9 +11,9 @@ def cleanup():
     if "/" in mongo_url.replace("://", ""):
         parts = mongo_url.split("/")
         if "?" in parts[-1]:
-            db_name = parts[-1].split("?")[0]
+            db_name = parts[-1].split("?")[0] or "dentai"
         elif parts[-1]:
-            db_name = parts[-1]
+            db_name = parts[-1] or "dentai"
             
     print(f"Connecting to MongoDB database '{db_name}'...")
     try:

@@ -129,19 +129,29 @@ export default function SmartScanScreen() {
           </View>
         ) : (
           <View>
-            <View style={styles.completeHeader}>
-              <Icon name="check-circle" size={32} color="#16A34A" />
-              <Text style={styles.completeTitle}>AI Analysis Results</Text>
-            </View>
-
-            <View style={styles.card}>
-              {Object.entries(result).map(([key, val]) => (
-                <View key={key} style={styles.resultItem}>
-                  <Text style={styles.label}>{key.replace(/_/g, ' ').toUpperCase()}</Text>
-                  {renderValue(val)}
+            {result.warning ? (
+              <View style={styles.warningCard}>
+                <Icon name="alert-decagram" size={48} color="#D97706" style={{ marginBottom: 12 }} />
+                <Text style={styles.warningTitle}>Invalid Image</Text>
+                <Text style={styles.warningText}>{result.warning}</Text>
+              </View>
+            ) : (
+              <View>
+                <View style={styles.completeHeader}>
+                  <Icon name="check-circle" size={32} color="#16A34A" />
+                  <Text style={styles.completeTitle}>AI Analysis Results</Text>
                 </View>
-              ))}
-            </View>
+
+                <View style={styles.card}>
+                  {Object.entries(result).map(([key, val]) => (
+                    <View key={key} style={styles.resultItem}>
+                      <Text style={styles.label}>{key.replace(/_/g, ' ').toUpperCase()}</Text>
+                      {renderValue(val)}
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
 
             <TouchableOpacity style={styles.reset} onPress={() => { setResult(null); setImage(null); }}>
               <Text style={styles.resetText}>Scan Another</Text>
@@ -179,4 +189,7 @@ const styles = StyleSheet.create({
   completeTitle: { fontSize: 20, fontWeight: 'bold', color: '#1E293B', marginLeft: 10 },
   reset: { marginTop: 24, padding: 18, alignItems: 'center', borderWidth: 1, borderColor: '#1A7FD4', borderRadius: 16 },
   resetText: { color: '#1A7FD4', fontWeight: 'bold' },
+  warningCard: { backgroundColor: '#FFFBEB', padding: 24, borderRadius: 20, borderWidth: 1, borderColor: '#FDE68A', alignItems: 'center' },
+  warningTitle: { fontSize: 18, fontWeight: 'bold', color: '#B45309', marginBottom: 8 },
+  warningText: { fontSize: 14, color: '#92400E', textAlign: 'center', lineHeight: 20 },
 });

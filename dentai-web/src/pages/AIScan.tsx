@@ -353,7 +353,20 @@ export const AIScan: React.FC = () => {
               </div>
             )}
 
-            {result && !result.error && (
+            {result && !result.error && result.warning && (
+              <div className="animate-fade-in" style={{
+                padding: '24px', borderRadius: '16px',
+                backgroundColor: '#fffbeb', border: '1px solid #fde68a',
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                textAlign: 'center', gap: '12px'
+              }}>
+                <AlertTriangle size={40} color="#d97706" />
+                <h4 style={{ fontWeight: 800, fontSize: '16px', color: '#b45309', margin: 0 }}>Invalid Image Detected</h4>
+                <p style={{ fontSize: '13.5px', color: '#92400e', margin: 0, lineHeight: 1.5 }}>{result.warning}</p>
+              </div>
+            )}
+
+            {result && !result.error && !result.warning && (
               <div className="animate-fade-in">
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: '8px',
