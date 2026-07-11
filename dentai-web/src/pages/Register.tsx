@@ -49,8 +49,15 @@ export const Register: React.FC = () => {
       if (Array.isArray(detail)) {
         // Pydantic validation errors come as an array
         setError(detail.map((e: any) => {
+          let errorMsg = e.msg || '';
+          // Strip raw Pydantic/FastAPI validation wrapper prefix
+          errorMsg = errorMsg.replace(/^Value error,\s*/, '');
           const field = e.loc ? e.loc.slice(1).join('.') : '';
-          return `${field ? field + ': ' : ''}${e.msg}`;
+          // Avoid repeating the field name if the message already includes it
+          if (field && !errorMsg.toLowerCase().includes(field.toLowerCase())) {
+            return `${field}: ${errorMsg}`;
+          }
+          return errorMsg;
         }).join(' | '));
       } else if (typeof detail === 'string') {
         setError(detail);

@@ -243,3 +243,55 @@ async def update_appointment_status(
         )
 
     return {"message": "Status updated", "status": new_status}
+
+
+@router.post("/cleanup-duplicates")
+async def cleanup_duplicates(
+    db=Depends(get_db)
+):
+    # Fetch all clinics
+    clinic_cursor = db["clinics"].find({})
+    clinics = []
+    async for c_doc in clinic_cursor:
+        clinics.append(c_doc)
+
+    seen = {}
+    duplicates_to_delete = []
+    merged_count = 0
+    
+    for clinic in clinics:
+        name = clinic.get("name", "").strip()
+        address = clinic.get("address", "").strip()
+        key = (name.lower(), address.lower())
+        
+        if key in seen:
+            keep_id = seen[key]
+            old_id = clinic["_id"]
+            duplicates_to_delete.append(old_id)
+            
+            # Update dentists referencing this duplicate
+            await db["dentists"].update_many({"clinic_id": old_id}, {"$set": {"clinic_id": keep_id}})
+            try:
+                await db["dentists"].update_many({"clinic_id": uuid.UUID(old_id)}, {"$set": {"clinic_id": uuid.UUID(keep_id)}})
+            except Exception:
+                pass
+                
+            # Update appointments referencing this duplicate
+            await db["appointments"].update_many({"clinic_id": old_id}, {"$set": {"clinic_id": keep_id}})
+            try:
+                await db["appointments"].update_many({"clinic_id": uuid.UUID(old_id)}, {"$set": {"clinic_id": uuid.UUID(keep_id)}})
+            except Exception:
+                pass
+                
+            merged_count += 1
+        else:
+            seen[key] = clinic["_id"]
+
+    if duplicates_to_delete:
+        await db["clinics"].delete_many({"_id": {"$in": duplicates_to_delete}})
+
+    return {
+        "status": "success",
+        "duplicates_removed": len(duplicates_to_delete),
+        "merged_clinics": merged_count
+    }

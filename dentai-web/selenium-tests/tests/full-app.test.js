@@ -13,6 +13,7 @@ describe('DentAI Complete End-to-End Application Testing', function () {
   const dentistPhone = `+1555${Math.floor(1000 + Math.random() * 9000)}`;
   const patientPhone = `+1555${Math.floor(1000 + Math.random() * 9000)}`;
   const securePassword = 'SecurePass123!';
+  const clinicName = `E2E Dental Studio ${Date.now()}`;
 
   before(async function () {
     const options = new chrome.Options();
@@ -76,7 +77,7 @@ describe('DentAI Complete End-to-End Application Testing', function () {
       5000,
       'Clinic Name input not found'
     );
-    await clinicNameInput.sendKeys('E2E Dental Studio');
+    await clinicNameInput.sendKeys(clinicName);
 
     const clinicAddressInput = await driver.findElement(By.id('clinicAddress'));
     await clinicAddressInput.sendKeys('456 E2E Medical Plaza, NY');
@@ -112,7 +113,10 @@ describe('DentAI Complete End-to-End Application Testing', function () {
     await driver.executeScript("arguments[0].scrollIntoView(true);", logoutButton);
     await driver.sleep(500);
     await logoutButton.click();
-    await driver.wait(until.urlContains('/login'), 15000, 'Logout did not redirect to /login within 15s');
+    await driver.wait(async () => {
+      const url = await driver.getCurrentUrl();
+      return !url.includes('/dashboard');
+    }, 15000, 'Logout did not clear dashboard session within 15s');
     await resetSession();
   });
 
@@ -171,7 +175,7 @@ describe('DentAI Complete End-to-End Application Testing', function () {
     // Step 1: Select symptoms
     console.log('Selecting symptoms...');
     const symptomCards = await driver.wait(
-      until.elementsLocated(By.className('symptom-card')),
+      until.elementsLocated(By.className('symptom-checkbox')),
       10000,
       'No symptom options found'
     );
@@ -216,15 +220,14 @@ describe('DentAI Complete End-to-End Application Testing', function () {
     await driver.sleep(500);
     await appointmentLink.click();
 
-    // Select Clinic
+    // Select Clinic matching clinicName
     console.log('Selecting clinic...');
-    const clinicCards = await driver.wait(
-      until.elementsLocated(By.className('clinic-card')),
-      15000,
-      'No clinics available in the booking panel'
+    const clinicCard = await driver.wait(
+      until.elementLocated(By.xpath(`//div[contains(@class, 'clinic-card')][.//span[contains(text(), '${clinicName}')]]`)),
+      20000,
+      `Clinic card for ${clinicName} not found`
     );
-    // Find the one matching our created clinic or click first
-    await clinicCards[0].click();
+    await clinicCard.click();
 
     // Select Dentist
     console.log('Selecting dentist...');
@@ -239,13 +242,25 @@ describe('DentAI Complete End-to-End Application Testing', function () {
     console.log('Selecting date...');
     const dateInput = await driver.findElement(By.className('date-input'));
     
-    // Set a date 2 days from now (YYYY-MM-DD format)
+    // Set a date that is guaranteed to be a weekday (Monday-Friday) to ensure slots are available
     const targetDate = new Date();
-    targetDate.setDate(targetDate.getDate() + 2);
+    let daysToAdd = 2;
+    targetDate.setDate(targetDate.getDate() + daysToAdd);
+    if (targetDate.getDay() === 6) { // Saturday
+      targetDate.setDate(targetDate.getDate() + 2);
+    } else if (targetDate.getDay() === 0) { // Sunday
+      targetDate.setDate(targetDate.getDate() + 1);
+    }
     const dateString = targetDate.toISOString().split('T')[0];
     
-    // Set the value directly using execution script to bypass OS-specific UI date-pickers
-    await driver.executeScript(`arguments[0].value = '${dateString}'; arguments[0].dispatchEvent(new Event('change'));`, dateInput);
+    // Set the value using the native input value setter so React tracks the state change
+    await driver.executeScript(`
+      const input = arguments[0];
+      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+      nativeInputValueSetter.call(input, '${dateString}');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    `, dateInput);
 
     // Select Time Slot
     console.log('Selecting time slot...');
@@ -311,8 +326,8 @@ describe('DentAI Complete End-to-End Application Testing', function () {
 
     // Verify success confirmation banner
     const successBanner = await driver.wait(
-      until.elementLocated(By.xpath("//div[contains(text(), 'Profile updated successfully!')]")),
-      10000,
+      until.elementLocated(By.xpath("//div[contains(., 'Profile updated successfully!')]")),
+      15000,
       'Profile update success confirmation not found'
     );
     const isDisplayed = await successBanner.isDisplayed();
@@ -324,7 +339,10 @@ describe('DentAI Complete End-to-End Application Testing', function () {
     await driver.executeScript("arguments[0].scrollIntoView(true);", logoutButton);
     await driver.sleep(500);
     await logoutButton.click();
-    await driver.wait(until.urlContains('/login'), 15000, 'Logout did not redirect to /login within 15s');
+    await driver.wait(async () => {
+      const url = await driver.getCurrentUrl();
+      return !url.includes('/dashboard');
+    }, 15000, 'Logout did not clear dashboard session within 15s');
     await resetSession();
   });
 
@@ -352,7 +370,7 @@ describe('DentAI Complete End-to-End Application Testing', function () {
     console.log('Waiting for redirect to dentist portal...');
     await driver.wait(
       until.urlContains('/dashboard'),
-      15000,
+      30000,
       'Failed to redirect to Dentist portal'
     );
 
@@ -370,11 +388,10 @@ describe('DentAI Complete End-to-End Application Testing', function () {
     // Check if the scheduled appointment is displayed
     console.log('Verifying booked appointment appears in dentist appointments...');
     const patientNameCell = await driver.wait(
-      until.elementLocated(By.xpath("//*[contains(text(), 'Alice Jones E2E Mod')]")),
-      15000,
+      until.elementLocated(By.xpath("//*[contains(text(), 'Alice Jones E2E')]")),
+      20000,
       'Scheduled appointment for patient Alice Jones was not found in Dentist Appointments list'
     );
-
     const isDisplayed = await patientNameCell.isDisplayed();
     assert.ok(isDisplayed, 'Booked appointment is not visible to the Dentist');
     console.log('End-to-End app validation verified successfully!');

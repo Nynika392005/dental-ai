@@ -74,12 +74,19 @@ async def register_user(request: Request, user_in: UserCreate, db=Depends(get_db
     if safe_role == RoleEnum.dentist:
         clinic_name = user_in.clinic_name or f"{user_in.full_name}'s Clinic"
         clinic_address = user_in.clinic_address or "Address not provided"
-        new_clinic = Clinic(name=clinic_name, address=clinic_address, phone=user_in.phone)
-        await db["clinics"].insert_one(new_clinic.to_dict())
+        
+        # Check if clinic already exists with same name and address to avoid duplicate listings
+        existing_clinic = await db["clinics"].find_one({"name": clinic_name, "address": clinic_address})
+        if existing_clinic:
+            clinic_id = existing_clinic["_id"]
+        else:
+            new_clinic = Clinic(name=clinic_name, address=clinic_address, phone=user_in.phone)
+            await db["clinics"].insert_one(new_clinic.to_dict())
+            clinic_id = new_clinic.id
 
         new_dentist = Dentist(
             user_id=new_user.id,
-            clinic_id=new_clinic.id,
+            clinic_id=clinic_id,
             specialization=user_in.specialization or "General Dentistry",
             bio=user_in.bio or "",
         )
