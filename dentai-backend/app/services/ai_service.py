@@ -17,13 +17,32 @@ def get_groq_client() -> Groq:
         raise ValueError("GROQ_API_KEY is not configured")
     return Groq(api_key=api_key)
 
-def extract_json(text: str) -> dict | None:
+from pydantic import BaseModel, Field
+from typing import Literal
+
+class FoodAnalysisSchema(BaseModel):
+    impact_score: int = Field(..., ge=1, le=10)
+    analysis: str
+    advice: str
+
+class ToothAnalysisSchema(BaseModel):
+    findings: str
+    recommendations: str
+    urgency: Literal["urgent", "soon", "monitor"]
+
+def extract_json(text: str, schema: type[BaseModel] = None) -> dict | None:
     try:
         text = text.replace("```json", "").replace("```", "").strip()
         match = re.search(r"(\{.*\})", text, re.DOTALL)
         if match:
-            return json.loads(match.group(1))
-        return json.loads(text)
+            parsed = json.loads(match.group(1))
+        else:
+            parsed = json.loads(text)
+            
+        if schema is not None:
+            val = schema(**parsed)
+            return val.model_dump() if hasattr(val, "model_dump") else val.dict()
+        return parsed
     except Exception:
         return None
 

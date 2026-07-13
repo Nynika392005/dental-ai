@@ -8,7 +8,11 @@
     "scheme": "dentaimobile",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nynika.dentaimobile",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {

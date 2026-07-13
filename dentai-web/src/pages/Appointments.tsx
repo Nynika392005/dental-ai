@@ -58,6 +58,21 @@ export const Appointments: React.FC = () => {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
 
+  const handleCancelAppointment = async (id: string) => {
+    if (!window.confirm("Are you sure you want to cancel this appointment?")) {
+      return;
+    }
+    setError('');
+    setSuccess(false);
+    try {
+      await api.delete(`/appointments/${id}`);
+      alert("Appointment cancelled successfully.");
+      fetchAppointments();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to cancel appointment.');
+    }
+  };
+
   useEffect(() => {
     fetchClinics();
     fetchAppointments();
@@ -326,8 +341,14 @@ export const Appointments: React.FC = () => {
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--primary)' }}>{app.clinic_name}</span>
                     <span 
-                      style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', padding: '2px 8px', borderRadius: '12px' }}
-                      className={`urgency-badge ${app.status === 'scheduled' ? 'monitor' : 'routine'}`}
+                      style={{ 
+                        fontSize: '11px', 
+                        fontWeight: 700, 
+                        textTransform: 'uppercase', 
+                        padding: '2px 8px', 
+                        borderRadius: '12px',
+                        ...getStatusStyles(app.status)
+                      }}
                     >
                       {app.status}
                     </span>
@@ -345,6 +366,31 @@ export const Appointments: React.FC = () => {
                       <strong>Reason:</strong> {app.reason}
                     </div>
                   )}
+
+                  {/* Cancel Button (Upcoming only and time in the future) */}
+                  {((app.status === 'Upcoming' || app.status === 'scheduled' || app.status === 'confirmed') && new Date(app.scheduled_at) > new Date()) && (
+                    <button
+                      onClick={() => handleCancelAppointment(app.id)}
+                      style={{
+                        marginTop: '12px',
+                        width: '100%',
+                        padding: '8px',
+                        borderRadius: '8px',
+                        border: '1px solid #fecaca',
+                        backgroundColor: '#fff1f2',
+                        color: '#dc2626',
+                        fontWeight: 600,
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      Cancel Appointment
+                    </button>
+                  )}
                 </div>
               ))
             )}
@@ -354,4 +400,25 @@ export const Appointments: React.FC = () => {
       </div>
     </div>
   );
+};
+
+const getStatusStyles = (status: string) => {
+  switch (status) {
+    case 'Upcoming':
+    case 'scheduled':
+    case 'confirmed':
+      return { backgroundColor: '#dbeafe', color: '#1d4ed8', border: '1px solid #bfdbfe' };
+    case 'Completed':
+    case 'completed':
+      return { backgroundColor: '#dcfce7', color: '#16a34a', border: '1px solid #bbf7d0' };
+    case 'Cancelled':
+    case 'cancelled':
+      return { backgroundColor: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca' };
+    case 'Missed':
+    case 'expired':
+    case 'missed':
+      return { backgroundColor: '#fef3c7', color: '#d97706', border: '1px solid #fde68a' };
+    default:
+      return { backgroundColor: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0' };
+  }
 };

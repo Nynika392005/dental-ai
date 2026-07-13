@@ -1,4 +1,6 @@
 import logging
+import asyncio
+from datetime import datetime
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,15 +23,57 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+async def auto_mark_missed_appointments_loop():
+    logger.info("Starting auto-mark missed appointments background loop")
+    while True:
+        try:
+            from app.core.database import check_db_connection
+            db = await check_db_connection()
+            now_dt = datetime.utcnow()
+            cursor = db["appointments"].find({"status": "Upcoming"})
+            async for doc in cursor:
+                scheduled_at_str = doc.get("scheduled_at")
+                if scheduled_at_str:
+                    try:
+                        scheduled_dt = datetime.fromisoformat(scheduled_at_str.replace('Z', '+00:00')).replace(tzinfo=None)
+                        if scheduled_dt < now_dt:
+                            await db["appointments"].update_one(
+                                {"_id": doc["_id"]},
+                                {"$set": {"status": "Missed"}}
+                            )
+                            logger.info(f"Background task automatically marked appointment {doc['_id']} as Missed")
+                    except Exception as e:
+                        logger.error(f"Error checking status for appointment {doc.get('_id')}: {e}")
+        except Exception as e:
+            logger.error(f"Error in auto-mark missed loop: {e}")
+        await asyncio.sleep(60)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(f"DentAI API starting up (env={settings.ENVIRONMENT})")
     try:
         from app.core.database import check_db_connection
-        await check_db_connection()
+        db = await check_db_connection()
         logger.info("Database connection established.")
+        
+        # Ensure the unique compound index exists on appointments (Feature 1)
+        try:
+            await db["appointments"].drop_index("dentist_id_1_scheduled_at_1")
+            logger.info("Dropped existing dentist_id_1_scheduled_at_1 index.")
+        except Exception:
+            pass
+
+        await db["appointments"].create_index(
+            [("dentist_id", 1), ("scheduled_at", 1)],
+            unique=True,
+            partialFilterExpression={"status": "Upcoming"}
+        )
+        logger.info("Created unique compound index for Upcoming appointments.")
+        
+        # Start auto-mark missed loop
+        asyncio.create_task(auto_mark_missed_appointments_loop())
     except Exception as e:
-        logger.error(f"Database connection failure: {e}")
+        logger.error(f"Database connection or index creation failure: {e}")
     try:
         from app.core.redis import get_redis
         await get_redis()

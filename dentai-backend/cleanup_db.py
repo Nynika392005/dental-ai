@@ -1,4 +1,5 @@
 import os
+import re
 import pymongo
 from pymongo import MongoClient
 
@@ -33,8 +34,9 @@ def cleanup():
     
     for clinic in clinics:
         name = clinic.get("name", "").strip()
+        name_clean = re.sub(r'\s+\d+$', '', name).strip()
         address = clinic.get("address", "").strip()
-        key = (name.lower(), address.lower())
+        key = (name_clean.lower(), address.lower())
         
         if key in seen:
             keep_id = seen[key]

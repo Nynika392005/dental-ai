@@ -167,6 +167,17 @@ async def main():
     await db["users"].create_index("phone", unique=True)
     await db["articles"].create_index("slug", unique=True)
     
+    try:
+        await db["appointments"].drop_index("dentist_id_1_scheduled_at_1")
+    except Exception:
+        pass
+
+    await db["appointments"].create_index(
+        [("dentist_id", 1), ("scheduled_at", 1)],
+        unique=True,
+        partialFilterExpression={"status": "Upcoming"}
+    )
+    
     await seed_mongodb_data(db)
 
 if __name__ == "__main__":

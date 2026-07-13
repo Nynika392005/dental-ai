@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Activity, Mail, Lock } from 'lucide-react';
+import { Activity, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const { login } = useAuth();
@@ -11,6 +11,7 @@ export const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,7 +69,7 @@ export const Login: React.FC = () => {
               <Lock size={16} style={{ position: 'absolute', left: '14px', top: '15px', color: '#94a3b8' }} />
               <input
                 id="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 className="form-input"
                 style={{ paddingLeft: '40px' }}
                 placeholder="Enter password"
@@ -76,6 +77,21 @@ export const Login: React.FC = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '14px',
+                  top: '15px',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={16} color='#94a3b8' /> : <Eye size={16} color='#94a3b8' />}
+              </button>
             </div>
           </div>
 

@@ -1,4 +1,5 @@
 import logging
+import datetime
 import uuid
 from datetime import date
 from typing import Literal
@@ -16,7 +17,7 @@ from app.schemas.appointment import AppointmentCreate, AppointmentResponse
 # FIX-06: Typed schema replaces raw dict — prevents mass assignment and generates
 # a proper OpenAPI body schema so callers cannot inject arbitrary fields.
 class AppointmentStatusUpdate(BaseModel):
-    status: Literal["scheduled", "confirmed", "completed", "cancelled"]
+    status: Literal["Upcoming", "Completed", "Cancelled", "Missed"]
 
 logger = logging.getLogger(__name__)
 
@@ -96,18 +97,18 @@ async def create_appointment(
     if dentist_doc.get("clinic_id") != str(uuid.UUID(str(req.clinic_id))):
         raise HTTPException(status_code=400, detail="Dentist does not belong to selected clinic")
 
-    # Double check conflict in memory first (optional, but good)
+    # Double check conflict in memory first
     conflict = await db["appointments"].find_one(
         {
             "dentist_id": str(uuid.UUID(str(req.dentist_id))),
             "scheduled_at": req.scheduled_at.isoformat()
             if hasattr(req.scheduled_at, "isoformat")
             else str(req.scheduled_at),
-            "status": {"$in": ["scheduled", "confirmed"]},
+            "status": "Upcoming",
         }
     )
     if conflict:
-        raise HTTPException(status_code=409, detail="This time slot is already booked.")
+        raise HTTPException(status_code=409, detail="This time slot is already booked. Please choose another available time.")
 
     appointment = Appointment(
         patient_id=current_user.id,
@@ -116,6 +117,7 @@ async def create_appointment(
         scheduled_at=req.scheduled_at,
         reason=req.reason,
         notes=req.notes,
+        status="Upcoming"
     )
     
     # Perform atomic insert inside unique compound index catch block
@@ -123,7 +125,7 @@ async def create_appointment(
     try:
         await db["appointments"].insert_one(appointment.to_dict())
     except DuplicateKeyError:
-        raise HTTPException(status_code=409, detail="This time slot is already booked.")
+        raise HTTPException(status_code=409, detail="This time slot is already booked. Please choose another available time.")
 
     clinic_doc = await db["clinics"].find_one({"_id": str(req.clinic_id)})
     dentist_doc2 = await db["dentists"].find_one({"_id": str(req.dentist_id)})
@@ -177,10 +179,36 @@ async def get_appointments(
                 dentist_name = u_doc["full_name"]
 
         patient_name = "Unknown Patient"
-        if role == "dentist":
-            p_doc = await db["users"].find_one({"_id": app_doc.get("patient_id")})
-            if p_doc:
-                patient_name = p_doc["full_name"]
+        p_doc = await db["users"].find_one({"_id": app_doc.get("patient_id")})
+        if p_doc:
+            patient_name = p_doc["full_name"]
+
+        # Parse scheduled_at
+        scheduled_at_str = app_doc.get("scheduled_at")
+        scheduled_dt = datetime.datetime.fromisoformat(scheduled_at_str.replace('Z', '+00:00')).replace(tzinfo=None) if isinstance(scheduled_at_str, str) else scheduled_at_str
+        
+        now_dt = datetime.datetime.utcnow()
+        raw_status = app_doc.get("status", "Upcoming")
+        
+        # Map old db entries
+        if raw_status in ["scheduled", "confirmed"]:
+            raw_status = "Upcoming"
+        elif raw_status == "completed":
+            raw_status = "Completed"
+        elif raw_status == "cancelled":
+            raw_status = "Cancelled"
+        elif raw_status in ["expired", "missed"]:
+            raw_status = "Missed"
+
+        if raw_status == "Upcoming" and scheduled_dt < now_dt:
+            display_status = "Missed"
+            # Automatically update database as well!
+            await db["appointments"].update_one(
+                {"_id": app_doc["_id"]},
+                {"$set": {"status": "Missed"}}
+            )
+        else:
+            display_status = raw_status
 
         appointments.append(
             {
@@ -193,7 +221,7 @@ async def get_appointments(
                 "patient_name": patient_name,
                 "scheduled_at": app_doc["scheduled_at"],
                 "reason": app_doc.get("reason"),
-                "status": app_doc.get("status", "scheduled"),
+                "status": display_status,
                 "notes": app_doc.get("notes"),
             }
         )
@@ -203,39 +231,58 @@ async def get_appointments(
 @router.patch("/{appointment_id}/status")
 async def update_appointment_status(
     appointment_id: uuid.UUID,
-    body: AppointmentStatusUpdate,  # FIX-06: typed schema, was raw dict
+    body: AppointmentStatusUpdate,
     current_user: User = Depends(get_current_user),
     db=Depends(get_db),
 ):
     role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
-    if role != "dentist":
-        raise HTTPException(status_code=403, detail="Only dentists can update appointment status")
+    new_status = body.status
 
-    new_status = body.status  # FIX-06: direct attribute access, not dict.get()
-
-    dentist_doc = await db["dentists"].find_one({"user_id": str(current_user.id)})
-    if not dentist_doc:
-        raise HTTPException(status_code=403, detail="Dentist profile not found")
-
-    # DB query level validation: verify the appointment exists AND belongs to the requesting dentist in a single search check (IDOR Prevention)
-    app_doc = await db["appointments"].find_one({
-        "_id": str(appointment_id),
-        "dentist_id": str(dentist_doc["_id"])
-    })
+    app_doc = await db["appointments"].find_one({"_id": str(appointment_id)})
     if not app_doc:
-        # Fail-closed: return 404 to avoid leaking existence of other dentists' appointments
         raise HTTPException(status_code=404, detail="Appointment not found")
 
-    # If status is being updated to an active state, check unique constraint atomically
+    # Authorize:
+    # - If patient: can only cancel their own upcoming appointments.
+    # - If dentist: can manage their own appointments.
+    if role == "patient":
+        if app_doc.get("patient_id") != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Patients can only cancel their own appointments")
+        if new_status != "Cancelled":
+            raise HTTPException(status_code=403, detail="Patients can only update appointment status to Cancelled")
+        
+        # Check if upcoming
+        scheduled_at_str = app_doc.get("scheduled_at")
+        if scheduled_at_str:
+            scheduled_dt = datetime.datetime.fromisoformat(scheduled_at_str.replace('Z', '+00:00')).replace(tzinfo=None)
+            if scheduled_dt < datetime.datetime.utcnow():
+                raise HTTPException(status_code=400, detail="Cannot cancel past appointments")
+            
+        current_status = app_doc.get("status", "Upcoming")
+        if current_status in ["Completed", "Missed", "Cancelled", "completed", "cancelled", "expired", "missed"]:
+            raise HTTPException(status_code=400, detail="Cannot cancel completed, missed, or cancelled appointments")
+            
+    elif role == "dentist":
+        dentist_doc = await db["dentists"].find_one({"user_id": str(current_user.id)})
+        if not dentist_doc or app_doc.get("dentist_id") != str(dentist_doc["_id"]):
+            raise HTTPException(status_code=404, detail="Appointment not found")
+            
+        current_status = app_doc.get("status", "Upcoming")
+        if current_status in ["Completed", "Missed", "Cancelled", "completed", "cancelled", "expired", "missed"]:
+            raise HTTPException(status_code=400, detail="This appointment is already completed, cancelled, or missed.")
+    else:
+        raise HTTPException(status_code=403, detail="Unauthorized role")
+
+    # If status is being updated to an active state (Upcoming), check unique constraint atomically
     from pymongo.errors import DuplicateKeyError
-    if new_status in ["scheduled", "confirmed"]:
+    if new_status == "Upcoming":
         try:
             await db["appointments"].update_one(
                 {"_id": str(appointment_id)},
                 {"$set": {"status": new_status}}
             )
         except DuplicateKeyError:
-            raise HTTPException(status_code=409, detail="This time slot is already booked.")
+            raise HTTPException(status_code=409, detail="This time slot is already booked. Please choose another available time.")
     else:
         await db["appointments"].update_one(
             {"_id": str(appointment_id)},
@@ -244,6 +291,44 @@ async def update_appointment_status(
 
     return {"message": "Status updated", "status": new_status}
 
+@router.delete("/{appointment_id}")
+async def cancel_appointment(
+    appointment_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    app_doc = await db["appointments"].find_one({"_id": str(appointment_id)})
+    if not app_doc:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    # Authorize patient or dentist
+    if role == "patient":
+        if app_doc.get("patient_id") != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Patients can only cancel their own appointments")
+    elif role == "dentist":
+        dentist_doc = await db["dentists"].find_one({"user_id": str(current_user.id)})
+        if not dentist_doc or app_doc.get("dentist_id") != str(dentist_doc["_id"]):
+            raise HTTPException(status_code=404, detail="Appointment not found")
+    else:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    scheduled_at_str = app_doc.get("scheduled_at")
+    if scheduled_at_str:
+        scheduled_dt = datetime.datetime.fromisoformat(scheduled_at_str.replace('Z', '+00:00')).replace(tzinfo=None)
+        if scheduled_dt < datetime.datetime.utcnow():
+            raise HTTPException(status_code=400, detail="Cannot cancel past appointments")
+
+    current_status = app_doc.get("status", "Upcoming")
+    if current_status in ["Completed", "Missed", "Cancelled", "completed", "cancelled", "expired", "missed"]:
+        raise HTTPException(status_code=400, detail="Cannot cancel completed, missed, or cancelled appointments")
+
+    await db["appointments"].update_one(
+        {"_id": str(appointment_id)},
+        {"$set": {"status": "Cancelled"}}
+    )
+
+    return {"message": "Appointment cancelled successfully."}
 
 @router.post("/cleanup-duplicates")
 async def cleanup_duplicates(

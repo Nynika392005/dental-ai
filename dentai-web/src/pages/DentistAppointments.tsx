@@ -13,7 +13,12 @@ interface Appointment {
 }
 
 const STATUS_COLORS: Record<string, { bg: string; color: string; border: string }> = {
-  scheduled: { bg: '#fef3c7', color: '#d97706', border: '#fde68a' },
+  Upcoming: { bg: '#dbeafe', color: '#1d4ed8', border: '#bfdbfe' },
+  Completed: { bg: '#dcfce7', color: '#16a34a', border: '#bbf7d0' },
+  Cancelled: { bg: '#fee2e2', color: '#dc2626', border: '#fecaca' },
+  Missed: { bg: '#fef3c7', color: '#d97706', border: '#fde68a' },
+  // Legacy support
+  scheduled: { bg: '#dbeafe', color: '#1d4ed8', border: '#bfdbfe' },
   confirmed: { bg: '#dbeafe', color: '#1d4ed8', border: '#bfdbfe' },
   completed: { bg: '#dcfce7', color: '#16a34a', border: '#bbf7d0' },
   cancelled: { bg: '#fee2e2', color: '#dc2626', border: '#fecaca' },
@@ -44,13 +49,19 @@ export const DentistAppointments: React.FC = () => {
   };
 
   const filtered = appointments.filter(a => {
-    const matchStatus = filter === 'all' || a.status === filter;
+    const matchStatus = filter === 'all' || 
+      (filter === 'Upcoming' && (a.status === 'Upcoming' || a.status === 'scheduled' || a.status === 'confirmed')) ||
+      (filter === 'Completed' && (a.status === 'Completed' || a.status === 'completed')) ||
+      (filter === 'Cancelled' && (a.status === 'Cancelled' || a.status === 'cancelled')) ||
+      (filter === 'Missed' && (a.status === 'Missed' || a.status === 'expired' || a.status === 'missed')) ||
+      a.status === filter;
+      
     const matchSearch = a.patient_name?.toLowerCase().includes(search.toLowerCase()) ||
       a.reason?.toLowerCase().includes(search.toLowerCase());
     return matchStatus && matchSearch;
   });
 
-  const tabs = ['all', 'scheduled', 'confirmed', 'completed', 'cancelled'];
+  const tabs = ['all', 'Upcoming', 'Completed', 'Cancelled', 'Missed'];
 
   return (
     <div className="page-container">
@@ -74,7 +85,15 @@ export const DentistAppointments: React.FC = () => {
               {t}
               {t !== 'all' && (
                 <span style={{ marginLeft: '6px', opacity: 0.8 }}>
-                  ({appointments.filter(a => a.status === t).length})
+                  ({
+                    appointments.filter(a => {
+                      if (t === 'Upcoming') return a.status === 'Upcoming' || a.status === 'scheduled' || a.status === 'confirmed';
+                      if (t === 'Completed') return a.status === 'Completed' || a.status === 'completed';
+                      if (t === 'Cancelled') return a.status === 'Cancelled' || a.status === 'cancelled';
+                      if (t === 'Missed') return a.status === 'Missed' || a.status === 'expired' || a.status === 'missed';
+                      return a.status === t;
+                    }).length
+                  })
                 </span>
               )}
             </button>
@@ -101,7 +120,7 @@ export const DentistAppointments: React.FC = () => {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filtered.map(appt => {
-            const sc = STATUS_COLORS[appt.status] || STATUS_COLORS.scheduled;
+            const sc = STATUS_COLORS[appt.status] || STATUS_COLORS.Upcoming;
             return (
               <div key={appt.id} style={{ backgroundColor: '#fff', borderRadius: '16px', border: '1px solid var(--bg-light-border)', padding: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
@@ -137,22 +156,20 @@ export const DentistAppointments: React.FC = () => {
                     }}>{appt.status}</span>
 
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      {appt.status === 'scheduled' && (<>
-                        <button onClick={() => handleStatus(appt.id, 'confirmed')}
+                      {(appt.status === 'Upcoming' || appt.status === 'scheduled' || appt.status === 'confirmed') && (<>
+                        <button onClick={() => handleStatus(appt.id, 'Completed')}
                           style={{ padding: '6px 14px', borderRadius: '8px', border: '1px solid #bbf7d0', backgroundColor: '#f0fdf4', color: '#16a34a', fontWeight: 600, fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <CheckCircle size={13} /> Confirm
+                          <CheckCircle size={13} /> Mark Completed
                         </button>
-                        <button onClick={() => handleStatus(appt.id, 'cancelled')}
+                        <button onClick={() => {
+                          if (window.confirm("Are you sure you want to cancel this appointment?")) {
+                            handleStatus(appt.id, 'Cancelled');
+                          }
+                        }}
                           style={{ padding: '6px 14px', borderRadius: '8px', border: '1px solid #fecaca', backgroundColor: '#fff1f2', color: '#dc2626', fontWeight: 600, fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <XCircle size={13} /> Cancel
                         </button>
                       </>)}
-                      {appt.status === 'confirmed' && (
-                        <button onClick={() => handleStatus(appt.id, 'completed')}
-                          style={{ padding: '6px 14px', borderRadius: '8px', border: '1px solid #bfdbfe', backgroundColor: '#dbeafe', color: '#1d4ed8', fontWeight: 600, fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <CheckCircle size={13} /> Mark Completed
-                        </button>
-                      )}
                     </div>
                   </div>
                 </div>

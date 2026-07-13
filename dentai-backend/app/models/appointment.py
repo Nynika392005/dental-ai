@@ -3,10 +3,10 @@ import enum
 from datetime import datetime
 
 class AppointmentStatus(str, enum.Enum):
-    scheduled = "scheduled"
-    confirmed = "confirmed"
-    completed = "completed"
-    cancelled = "cancelled"
+    upcoming = "Upcoming"
+    completed = "Completed"
+    cancelled = "Cancelled"
+    missed = "Missed"
 
 class Appointment:
     def __init__(self, **kwargs):
@@ -45,20 +45,38 @@ class Appointment:
         self.scheduled_at = kwargs.get("scheduled_at")
         if isinstance(self.scheduled_at, str):
             try:
-                self.scheduled_at = datetime.fromisoformat(self.scheduled_at)
+                self.scheduled_at = datetime.fromisoformat(self.scheduled_at.replace('Z', '+00:00')).replace(tzinfo=None)
             except ValueError:
-                pass
+                try:
+                    self.scheduled_at = datetime.fromisoformat(self.scheduled_at)
+                except ValueError:
+                    pass
                 
         self.reason = kwargs.get("reason")
         
-        status_val = kwargs.get("status", AppointmentStatus.scheduled)
-        if isinstance(status_val, enum.Enum):
-            self.status = status_val
-        else:
-            try:
-                self.status = AppointmentStatus(status_val)
-            except ValueError:
-                self.status = AppointmentStatus.scheduled
+        status_val = kwargs.get("status", AppointmentStatus.upcoming)
+        
+        # Convert legacy strings to Enum representation if valid
+        if status_val in ["scheduled", "confirmed"]:
+            status_val = AppointmentStatus.upcoming
+        elif status_val in ["completed", "Completed"]:
+            status_val = AppointmentStatus.completed
+        elif status_val in ["cancelled", "Cancelled"]:
+            status_val = AppointmentStatus.cancelled
+        elif status_val in ["expired", "missed", "Missed"]:
+            status_val = AppointmentStatus.missed
+
+        try:
+            raw_status = AppointmentStatus(status_val)
+            now_dt = datetime.utcnow()
+            scheduled_dt = self.scheduled_at if isinstance(self.scheduled_at, datetime) else now_dt
+            
+            if raw_status not in [AppointmentStatus.cancelled, AppointmentStatus.completed] and scheduled_dt < now_dt:
+                self.status = AppointmentStatus.missed
+            else:
+                self.status = raw_status
+        except ValueError:
+            self.status = AppointmentStatus.upcoming
                 
         self.notes = kwargs.get("notes")
         self.created_at = kwargs.get("created_at") or datetime.utcnow()

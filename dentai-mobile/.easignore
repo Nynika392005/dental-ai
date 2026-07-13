@@ -1,0 +1,14 @@
+# Ignore local development dependencies
+node_modules/
+
+# Ignore local Expo and build artifacts
+.expo/
+dist/
+web-build/
+
+# Ignore native directories (EAS rebuilds them anyway)
+ios/
+android/
+
+# Ignore large testing files (like the 85MB APK)
+appium-tests/

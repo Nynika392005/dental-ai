@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Feather } from '@expo/vector-icons';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { api } from '../../lib/api';
@@ -8,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { login } = useAuthStore();
@@ -78,15 +80,27 @@ export default function LoginScreen() {
           testID="email-input"
         />
         
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor="#94A3B8"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-          testID="password-input"
-        />
+        <View style={{ position: 'relative' }}>
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor="#94A3B8"
+            secureTextEntry={!showPassword}
+            value={password}
+            onChangeText={setPassword}
+            testID="password-input"
+          />
+          <TouchableOpacity
+            style={{
+              position: 'absolute',
+              right: 12,
+              top: 12,
+            }}
+            onPress={() => setShowPassword(!showPassword)}
+          >
+            <Feather name={showPassword ? "eye-off" : "eye"} size={20} color="#94A3B8" />
+          </TouchableOpacity>
+        </View>
         
         <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading} testID="login-button">
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Sign In</Text>}

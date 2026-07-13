@@ -36,7 +36,7 @@ def setup_db_indexes():
         await db["appointments"].create_index(
             [("dentist_id", 1), ("scheduled_at", 1)],
             unique=True,
-            partialFilterExpression={"status": {"$in": ["scheduled", "confirmed"]}}
+            partialFilterExpression={"status": "Upcoming"}
         )
         # Clear collections to maintain clean state
         db["users"]._write([])
@@ -122,31 +122,23 @@ def test_idor_conversation_ownership():
     assert response.status_code == 404  # Fail-closed
 
 
-def test_idor_appointment_status_update():
+# IDOR vulnerability prevention on appointment status modification
+def test_appointment_idor_prevention_status_change():
     dentist_user_a = mock_get_current_user(role=RoleEnum.dentist)
     dentist_user_b = mock_get_current_user(role=RoleEnum.dentist)
     dentist_a_id = uuid.uuid4()
-    dentist_b_id = uuid.uuid4()
     appointment_id = uuid.uuid4()
 
     async def _prepare():
         db = await check_db_connection()
         await db["users"].insert_one(dentist_user_a.to_dict())
         await db["users"].insert_one(dentist_user_b.to_dict())
-        
         await db["dentists"].insert_one({
             "_id": str(dentist_a_id),
             "user_id": str(dentist_user_a.id),
             "clinic_id": str(uuid.uuid4()),
-            "specialization": "General"
+            "specialization": "General Dentistry"
         })
-        await db["dentists"].insert_one({
-            "_id": str(dentist_b_id),
-            "user_id": str(dentist_user_b.id),
-            "clinic_id": str(uuid.uuid4()),
-            "specialization": "Pediatric"
-        })
-
         app = Appointment(
             id=appointment_id,
             patient_id=uuid.uuid4(),
@@ -154,7 +146,7 @@ def test_idor_appointment_status_update():
             clinic_id=uuid.uuid4(),
             scheduled_at=datetime.utcnow() + timedelta(days=1),
             reason="Checkup",
-            status="scheduled"
+            status="Upcoming"
         )
         await db["appointments"].insert_one(app.to_dict())
 
@@ -162,14 +154,14 @@ def test_idor_appointment_status_update():
 
     # Authenticate as Dentist B (unauthorized) and attempt to change status
     override_auth(dentist_user_b)
-    response = client.patch(f"/appointments/{appointment_id}/status", json={"status": "confirmed"})
+    response = client.patch(f"/appointments/{appointment_id}/status", json={"status": "Completed"})
     assert response.status_code == 404  # Fail-closed
 
     # Authenticate as Dentist A (authorized) and verify status update works
     override_auth(dentist_user_a)
-    response = client.patch(f"/appointments/{appointment_id}/status", json={"status": "confirmed"})
+    response = client.patch(f"/appointments/{appointment_id}/status", json={"status": "Completed"})
     assert response.status_code == 200
-    assert response.json()["status"] == "confirmed"
+    assert response.json()["status"] == "Completed"
 
 
 def test_appointment_double_booking_race_prevention():

@@ -10,10 +10,17 @@ import { api } from '../../../lib/api';
 import { useAuthStore } from '../../../stores/authStore';
 
 const STATUS_COLOR: Record<string, { bg: string; text: string }> = {
-  scheduled:  { bg: '#FEF3C7', text: '#D97706' },
+  Upcoming:   { bg: '#DBEAFE', text: '#1D4ED8' },
+  Completed:  { bg: '#DCFCE7', text: '#16A34A' },
+  Cancelled:  { bg: '#FEE2E2', text: '#DC2626' },
+  Missed:     { bg: '#FEF3C7', text: '#D97706' },
+  // Legacy support
+  scheduled:  { bg: '#DBEAFE', text: '#1D4ED8' },
   confirmed:  { bg: '#DBEAFE', text: '#1D4ED8' },
   completed:  { bg: '#DCFCE7', text: '#16A34A' },
   cancelled:  { bg: '#FEE2E2', text: '#DC2626' },
+  expired:    { bg: '#FEF3C7', text: '#D97706' },
+  missed:     { bg: '#FEF3C7', text: '#D97706' },
 };
 
 export default function AppointmentsScreen() {
@@ -49,6 +56,11 @@ export default function AppointmentsScreen() {
   const handleStatusUpdate = async (id: string, status: string) => {
     try {
       await api.patch(`/appointments/${id}/status`, { status });
+      if (status === 'Cancelled') {
+        Alert.alert('Success', 'Appointment cancelled successfully.');
+      } else {
+        Alert.alert('Success', 'Status updated successfully.');
+      }
       loadAppointments();
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.detail || 'Could not update status.');
@@ -61,20 +73,27 @@ export default function AppointmentsScreen() {
       'Are you sure you want to cancel this appointment?',
       [
         { text: 'No', style: 'cancel' },
-        { text: 'Yes, Cancel', style: 'destructive', onPress: () => handleStatusUpdate(id, 'cancelled') },
+        { text: 'Yes, Cancel', style: 'destructive', onPress: () => handleStatusUpdate(id, 'Cancelled') },
       ]
     );
   };
 
-  const filters = ['all', 'scheduled', 'confirmed', 'completed', 'cancelled'];
+  const filters = ['all', 'Upcoming', 'Completed', 'Cancelled', 'Missed'];
 
-  const filtered = filter === 'all'
-    ? appointments
-    : appointments.filter(a => a.status === filter);
+  const matchesFilter = (status: string, currentFilter: string) => {
+    if (currentFilter === 'all') return true;
+    if (currentFilter === 'Upcoming') return status === 'Upcoming' || status === 'scheduled' || status === 'confirmed';
+    if (currentFilter === 'Completed') return status === 'Completed' || status === 'completed';
+    if (currentFilter === 'Cancelled') return status === 'Cancelled' || status === 'cancelled';
+    if (currentFilter === 'Missed') return status === 'Missed' || status === 'expired' || status === 'missed';
+    return status === currentFilter;
+  };
+
+  const filtered = appointments.filter(a => matchesFilter(a.status, filter));
 
   // ── Dentist card ───────────────────────────────────────────────────────────
   const renderDentistCard = (apt: any) => {
-    const sc = STATUS_COLOR[apt.status] || STATUS_COLOR.scheduled;
+    const sc = STATUS_COLOR[apt.status] || STATUS_COLOR.Upcoming;
     return (
       <View key={apt.id} style={styles.card}>
         {/* Header row */}
@@ -97,23 +116,15 @@ export default function AppointmentsScreen() {
         {apt.notes  ? <Text style={styles.notes}><Text style={styles.label}>Notes: </Text>{apt.notes}</Text>   : null}
 
         {/* Action buttons */}
-        {apt.status === 'scheduled' && (
+        {(apt.status === 'Upcoming' || apt.status === 'scheduled' || apt.status === 'confirmed') && (
           <View style={styles.actionRow}>
-            <TouchableOpacity style={styles.confirmBtn} onPress={() => handleStatusUpdate(apt.id, 'confirmed')}>
-              <Icon name="check-circle-outline" size={16} color="#16A34A" />
-              <Text style={styles.confirmTxt}>Confirm</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => handleCancel(apt.id)}>
-              <Icon name="close-circle-outline" size={16} color="#DC2626" />
-              <Text style={styles.cancelTxt}>Decline</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        {apt.status === 'confirmed' && (
-          <View style={styles.actionRow}>
-            <TouchableOpacity style={styles.completeBtn} onPress={() => handleStatusUpdate(apt.id, 'completed')}>
+            <TouchableOpacity style={styles.completeBtn} onPress={() => handleStatusUpdate(apt.id, 'Completed')}>
               <Icon name="check-all" size={16} color="#1D4ED8" />
               <Text style={styles.completeTxt}>Mark Completed</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.cancelBtn, { marginTop: 0 }]} onPress={() => handleCancel(apt.id)}>
+              <Icon name="close-circle-outline" size={16} color="#DC2626" />
+              <Text style={styles.cancelTxt}>Cancel</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -123,8 +134,8 @@ export default function AppointmentsScreen() {
 
   // ── Patient card ───────────────────────────────────────────────────────────
   const renderPatientCard = (apt: any) => {
-    const sc = STATUS_COLOR[apt.status] || STATUS_COLOR.scheduled;
-    const canCancel = apt.status === 'scheduled' || apt.status === 'confirmed';
+    const sc = STATUS_COLOR[apt.status] || STATUS_COLOR.Upcoming;
+    const canCancel = (apt.status === 'Upcoming' || apt.status === 'scheduled' || apt.status === 'confirmed') && new Date(apt.scheduled_at) > new Date();
     return (
       <View key={apt.id} style={styles.card}>
         <View style={styles.cardHeader}>
@@ -187,8 +198,8 @@ export default function AppointmentsScreen() {
           >
             <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>
               {f.charAt(0).toUpperCase() + f.slice(1)}
-              {f !== 'all' && appointments.filter(a => a.status === f).length > 0
-                ? ` (${appointments.filter(a => a.status === f).length})`
+              {f !== 'all' && appointments.filter(a => matchesFilter(a.status, f)).length > 0
+                ? ` (${appointments.filter(a => matchesFilter(a.status, f)).length})`
                 : ''}
             </Text>
           </TouchableOpacity>
