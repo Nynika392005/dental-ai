@@ -58,6 +58,12 @@ async def call_google_gemini_vision(image_base64: str, prompt: str) -> dict | No
                     logger.info("✅ Google Gemini Vision successful!")
                     parsed["service"] = "google-gemini-vision"
                     parsed["status"] = "REAL_VISION_API_ANALYSIS"
+                    
+                    # If AI returned a warning, return it immediately without any modifications
+                    if "warning" in parsed:
+                        logger.info("⚠️ AI detected irrelevant image - returning warning")
+                        return parsed
+                    
                     return parsed
                 
                 # Format non-JSON response
@@ -191,6 +197,12 @@ async def call_openrouter_vision(image_base64: str, prompt: str) -> dict | None:
                     logger.info("✅ OpenRouter Claude Vision JSON response successful!")
                     parsed["service"] = "openrouter-claude-haiku-vision"
                     parsed["status"] = "REAL_VISION_API_ANALYSIS"
+                    
+                    # If AI returned a warning, return it immediately without any modifications
+                    if "warning" in parsed:
+                        logger.info("⚠️ AI detected irrelevant image - returning warning")
+                        return parsed
+                    
                     return parsed
                 
                 # If response is not JSON, format it for medicine analysis
@@ -282,6 +294,12 @@ async def call_openrouter_gpt4o_backup(image_base64: str, prompt: str) -> dict |
                     logger.info("✅ OpenRouter GPT-4o Vision successful!")
                     parsed["service"] = "openrouter-gpt4o-vision"
                     parsed["status"] = "REAL_VISION_API_ANALYSIS"
+                    
+                    # If AI returned a warning, return it immediately without any modifications
+                    if "warning" in parsed:
+                        logger.info("⚠️ AI detected irrelevant image - returning warning")
+                        return parsed
+                    
                     return parsed
                 
                 # Format non-JSON response
