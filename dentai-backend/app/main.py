@@ -308,45 +308,14 @@ async def mobile_scan_workaround(
         from app.services.ai_service import analyze_image_task
         result = await analyze_image_task(image_base64, task_type.lower())
         
-        # Return appropriate fields based on scan type
-        if task_type.lower() == "medicine":
-            clean_result = {
-                "name": result.get("name", "Unknown medication"),
-                "medical_purpose": result.get("medical_purpose", "Purpose not identified"),
-                "dosage_instructions": result.get("dosage_instructions", "Consult healthcare provider for dosage"),
-                "safety_warnings": result.get("safety_warnings", "Always consult healthcare provider before use"),
-                "ai_analysis": result.get("ai_analysis") or result.get("ai_response") or result.get("analysis") or "AI analysis completed successfully",
-                "confidence": result.get("confidence", "medium")
-            }
-        elif task_type.lower() == "tooth":
-            clean_result = {
-                "findings": result.get("findings", "Dental analysis completed"),
-                "professional_recommendations": result.get("professional_recommendations", "Regular dental checkups recommended"),
-                "urgency": result.get("urgency", "monitor"),
-                "ai_analysis": result.get("ai_analysis") or result.get("ai_response") or result.get("analysis") or "Dental analysis completed",
-                "confidence": result.get("confidence", "medium")
-            }
-        elif task_type.lower() == "food":
-            clean_result = {
-                "impact_score": result.get("impact_score", 5),
-                "dental_analysis": result.get("dental_analysis", "Food impact analysis completed"),
-                "preventative_advice": result.get("preventative_advice", "Maintain good oral hygiene after eating"),
-                "ai_analysis": result.get("ai_analysis") or result.get("ai_response") or result.get("analysis") or "Food analysis completed",
-                "confidence": result.get("confidence", "medium")
-            }
-        elif task_type.lower() == "habit":
-            clean_result = {
-                "detected_habit": result.get("detected_habit", "Analysis completed"),
-                "confidence_score": result.get("confidence_score", 0.5),
-                "long_term_risks": result.get("long_term_risks", "Consult dentist for habit assessment"),
-                "clinical_advice": result.get("clinical_advice", "Regular dental monitoring recommended"),
-                "ai_analysis": result.get("ai_analysis") or result.get("ai_response") or result.get("analysis") or "Habit analysis completed"
-            }
-        else:
-            # Fallback for unknown types
-            clean_result = result
+        # analyze_image_task already returns cleaned and validated results
+        # If it's a warning, return as-is
+        if "warning" in result:
+            return result
         
-        return clean_result
+        # Return the cleaned result from analyze_image_task
+        # Do NOT add back technical fields like ai_analysis, confidence, service, status
+        return result
         
     except HTTPException:
         raise

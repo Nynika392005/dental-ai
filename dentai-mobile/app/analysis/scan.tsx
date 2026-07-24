@@ -116,48 +116,10 @@ export default function SmartScanScreen() {
       
       console.log('🎉 SUCCESS: Mobile scan worked!');
       
-      // Filter response based on scan type - each has different relevant fields
-      let cleanResult;
-      
-      if (type === 'medicine') {
-        cleanResult = {
-          name: jsonRes.data.name,
-          medical_purpose: jsonRes.data.medical_purpose,
-          dosage_instructions: jsonRes.data.dosage_instructions,
-          safety_warnings: jsonRes.data.safety_warnings,
-          ai_analysis: jsonRes.data.ai_analysis || jsonRes.data.ai_response || jsonRes.data.analysis || "Analysis completed",
-          confidence: jsonRes.data.confidence
-        };
-      } else if (type === 'tooth') {
-        cleanResult = {
-          findings: jsonRes.data.findings,
-          professional_recommendations: jsonRes.data.professional_recommendations,
-          urgency: jsonRes.data.urgency,
-          ai_analysis: jsonRes.data.ai_analysis || jsonRes.data.ai_response || jsonRes.data.analysis || "Analysis completed",
-          confidence: jsonRes.data.confidence
-        };
-      } else if (type === 'food') {
-        cleanResult = {
-          impact_score: jsonRes.data.impact_score,
-          dental_analysis: jsonRes.data.dental_analysis,
-          preventative_advice: jsonRes.data.preventative_advice,
-          ai_analysis: jsonRes.data.ai_analysis || jsonRes.data.ai_response || jsonRes.data.analysis || "Analysis completed",
-          confidence: jsonRes.data.confidence
-        };
-      } else if (type === 'habit') {
-        cleanResult = {
-          detected_habit: jsonRes.data.detected_habit,
-          confidence_score: jsonRes.data.confidence_score,
-          long_term_risks: jsonRes.data.long_term_risks,
-          clinical_advice: jsonRes.data.clinical_advice,
-          ai_analysis: jsonRes.data.ai_analysis || jsonRes.data.ai_response || jsonRes.data.analysis || "Analysis completed"
-        };
-      } else {
-        // Fallback - show all fields
-        cleanResult = jsonRes.data;
-      }
-      
-      setResult(cleanResult);
+      // Backend already returns cleaned response with only relevant fields
+      // If it's a warning, show it directly
+      // Otherwise, show the clean analysis result
+      setResult(jsonRes.data);
       
     } catch (jsonError: any) {
       console.error('💥 Upload failed:');
