@@ -743,6 +743,32 @@ def extract_json(text: str, schema: type[BaseModel] = None) -> dict | None:
     except Exception:
         return None
 
+def clean_response_fields(result: dict, task_type: str) -> dict:
+    """
+    Remove technical fields from the response, keeping only user-relevant fields.
+    Each scan type has its own set of relevant fields.
+    """
+    # If it's a warning, return as-is
+    if "warning" in result:
+        return result
+    
+    # Define which fields to keep for each scan type
+    relevant_fields = {
+        "medicine": ["name", "medical_purpose", "dosage_instructions", "safety_warnings"],
+        "tooth": ["findings", "professional_recommendations", "urgency"],
+        "food": ["impact_score", "dental_analysis", "preventative_advice"],
+        "habit": ["detected_habit", "confidence_score", "long_term_risks", "clinical_advice"]
+    }
+    
+    # Get relevant fields for this scan type
+    fields_to_keep = relevant_fields.get(task_type, [])
+    
+    # Filter the result to only include relevant fields
+    cleaned = {key: value for key, value in result.items() if key in fields_to_keep}
+    
+    return cleaned
+
+
 def validate_analysis_result(result: dict, task_type: str) -> dict:
     """
     Validate AI analysis results and convert uncertain/unknown responses to warnings.
@@ -871,28 +897,33 @@ async def analyze_image_task(image_base64: str, task_type: str) -> dict:
         if claude_result is not None:
             # Validate result - convert uncertain/unknown responses to warnings
             validated_result = validate_analysis_result(claude_result, task_type)
-            return validated_result
+            # Clean response - remove technical fields
+            cleaned_result = clean_response_fields(validated_result, task_type)
+            return cleaned_result
 
         # 🥈 BACKUP: OpenRouter GPT-4o (ALSO CONFIRMED WORKING)
         logger.info(f"🔍 Trying OpenRouter GPT-4o Vision backup for {task_type} analysis")
         gpt4o_result = await call_openrouter_gpt4o_backup(image_base64, prompt_text)
         if gpt4o_result is not None:
             validated_result = validate_analysis_result(gpt4o_result, task_type)
-            return validated_result
+            cleaned_result = clean_response_fields(validated_result, task_type)
+            return cleaned_result
 
         # 🥉 FALLBACK: Google Gemini Vision 
         logger.info(f"🔍 Trying Google Gemini Vision for {task_type} analysis")
         gemini_result = await call_google_gemini_vision(image_base64, prompt_text)
         if gemini_result is not None:
             validated_result = validate_analysis_result(gemini_result, task_type)
-            return validated_result
+            cleaned_result = clean_response_fields(validated_result, task_type)
+            return cleaned_result
 
         # 🔧 LAST RESORT: Hugging Face Vision
         logger.info(f"🔍 Trying Hugging Face Vision for {task_type} analysis")
         hf_result = await call_huggingface_vision(image_base64, prompt_text)
         if hf_result is not None:
             validated_result = validate_analysis_result(hf_result, task_type)
-            return validated_result
+            cleaned_result = clean_response_fields(validated_result, task_type)
+            return cleaned_result
 
         # If all APIs fail - this shouldn't happen with working OpenRouter key
         logger.error("All vision APIs failed - check API configuration")
