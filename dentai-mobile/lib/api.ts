@@ -3,11 +3,11 @@ import { useAuthStore } from '../stores/authStore';
 
 // Backend URLs - automatically switches between development and production
 const BACKEND_URLS = [
-  'https://your-app-name.onrender.com',  // PRODUCTION - Update this with your actual Render URL
-  'http://172.20.10.2:8000',             // LOCAL DEV - Primary IP
-  'http://172.19.112.1:8000',            // LOCAL DEV - Alternative IP
-  'http://192.168.1.100:8000',           // LOCAL DEV - Common local network IP
-  'http://localhost:8000',               // LOCAL DEV - Localhost (emulator only)
+  'https://dental-ai-8qr1.onrender.com',  // PRODUCTION - Render deployment
+  'http://172.20.10.2:8000',              // LOCAL DEV - Primary IP
+  'http://172.19.112.1:8000',             // LOCAL DEV - Alternative IP
+  'http://192.168.1.100:8000',            // LOCAL DEV - Common local network IP
+  'http://localhost:8000',                // LOCAL DEV - Localhost (emulator only)
 ];
 
 let currentBackendUrl = BACKEND_URLS[0];
