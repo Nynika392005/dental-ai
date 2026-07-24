@@ -30,7 +30,7 @@ declare module 'axios' {
 // Auto-retry with different backend URLs on network failure
 api.interceptors.request.use(
   async (config) => {
-    console.log(`📡 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    // console.log(`📡 API Request: ${config.method?.toUpperCase()} ${config.url}`);
     const start = Date.now();
     config.metadata = { startTime: start };
     
@@ -47,7 +47,7 @@ api.interceptors.request.use(
     return config;
   },
   (error: unknown) => {
-    console.error('📡 Request Error:', error);
+    // console.error('📡 Request Error:', error);
     return Promise.reject(error);
   }
 );
@@ -55,7 +55,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => {
     const duration = Date.now() - (response.config.metadata?.startTime || 0);
-    console.log(`✅ API Response: ${response.status} in ${duration}ms`);
+    // console.log(`✅ API Response: ${response.status} in ${duration}ms`);
     
     // Reset failure count on success
     failureCount = 0;
@@ -68,22 +68,22 @@ api.interceptors.response.use(
     
     // Handle 409 Conflict as a warning (expected business logic, not an error)
     if (statusCode === 409) {
-      console.warn(`⚠️  API Conflict: ${statusCode} in ${duration}ms - ${error.response?.data?.detail || 'Resource conflict'}`);
+      // console.warn(`⚠️  API Conflict: ${statusCode} in ${duration}ms - ${error.response?.data?.detail || 'Resource conflict'}`);
       return Promise.reject(error);
     }
     
-    // Log other errors normally
-    console.error(`❌ API Error: ${statusCode || 'Network'} in ${duration}ms`);
+    // Log other errors normally (keep for debugging critical issues)
+    // console.error(`❌ API Error: ${statusCode || 'Network'} in ${duration}ms`);
     
     // Don't retry on authentication errors or client errors (4xx)
     if (statusCode === 401) {
-      console.log('🔐 Authentication required - user may need to login');
+      // console.log('🔐 Authentication required - user may need to login');
       return Promise.reject(error);
     }
     
     // Don't retry on other client errors (400-499) - these are not network issues
     if (statusCode >= 400 && statusCode < 500) {
-      console.error('❌ Client error - no retry needed');
+      // console.error('❌ Client error - no retry needed');
       return Promise.reject(error);
     }
     
@@ -93,7 +93,7 @@ api.interceptors.response.use(
                           !error.response;
                           
     if (!isNetworkError) {
-      console.error('❌ Server error (not network) - no retry needed');
+      // console.error('❌ Server error (not network) - no retry needed');
       return Promise.reject(error);
     }
     
@@ -102,7 +102,7 @@ api.interceptors.response.use(
     
     // Circuit breaker - stop retrying after too many failures
     if (failureCount >= MAX_FAILURES) {
-      console.error(`🚨 Circuit breaker activated: ${failureCount} consecutive failures. Stopping all retries.`);
+      // console.error(`🚨 Circuit breaker activated: ${failureCount} consecutive failures. Stopping all retries.`);
       return Promise.reject(new Error(`Network circuit breaker activated after ${failureCount} failures. Please check your internet connection and restart the app.`));
     }
     
@@ -120,7 +120,7 @@ api.interceptors.response.use(
       
       currentBackendUrl = BACKEND_URLS[nextIndex];
       api.defaults.baseURL = currentBackendUrl;
-      console.log(`🔄 Trying backup backend ${error.config._retryCount}/${BACKEND_URLS.length - 1}: ${currentBackendUrl}`);
+      // console.log(`🔄 Trying backup backend ${error.config._retryCount}/${BACKEND_URLS.length - 1}: ${currentBackendUrl}`);
       
       // Update the config for retry
       error.config.baseURL = currentBackendUrl;
@@ -130,8 +130,8 @@ api.interceptors.response.use(
     }
     
     // All backends tried - stop retrying
-    console.error('❌ All backends failed or non-network error. Stopping retries.');
-    console.error('Error details:', error.message || 'Unknown error');
+    // console.error('❌ All backends failed or non-network error. Stopping retries.');
+    // console.error('Error details:', error.message || 'Unknown error');
     return Promise.reject(error);
   }
 );
@@ -140,10 +140,10 @@ api.interceptors.response.use(
 export const testBackendConnection = async () => {
   try {
     const response = await api.get('/mobile-test');
-    console.log('✅ Backend connected:', response.data);
+    // console.log('✅ Backend connected:', response.data);
     return true;
   } catch (error: any) {
-    console.error('❌ Backend connection failed:', error?.message || 'Unknown error');
+    // console.error('❌ Backend connection failed:', error?.message || 'Unknown error');
     return false;
   }
 };
@@ -151,7 +151,7 @@ export const testBackendConnection = async () => {
 // Reset circuit breaker manually
 export const resetCircuitBreaker = () => {
   failureCount = 0;
-  console.log('🔄 Circuit breaker reset. Retries enabled.');
+  // console.log('🔄 Circuit breaker reset. Retries enabled.');
 };
 
 // Get current failure count
