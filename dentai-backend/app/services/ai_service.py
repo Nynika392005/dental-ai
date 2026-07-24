@@ -743,6 +743,75 @@ def extract_json(text: str, schema: type[BaseModel] = None) -> dict | None:
     except Exception:
         return None
 
+def validate_analysis_result(result: dict, task_type: str) -> dict:
+    """
+    Validate AI analysis results and convert uncertain/unknown responses to warnings.
+    If the AI couldn't confidently identify the item, return a warning instead.
+    """
+    # If already a warning, return as-is
+    if "warning" in result:
+        return result
+    
+    # Check for uncertain medicine identification
+    if task_type == "medicine":
+        name = result.get("name", "").lower()
+        purpose = result.get("medical_purpose", "").lower()
+        
+        # Indicators that the AI couldn't identify the medicine
+        uncertain_indicators = [
+            "unknown",
+            "unidentified",
+            "cannot identify",
+            "unable to identify",
+            "not identified",
+            "unclear",
+            "uncertain",
+            "generic",
+            "unspecified",
+            "purpose not identified",
+            "not determined"
+        ]
+        
+        if any(indicator in name or indicator in purpose for indicator in uncertain_indicators):
+            logger.info("⚠️ AI returned uncertain medicine identification - converting to warning")
+            return {
+                "warning": "This is not a clear medicine image. Please upload a clear photo of pills, tablets, or medicine bottles with visible text or markings."
+            }
+    
+    # Check for uncertain tooth analysis
+    elif task_type == "tooth":
+        findings = result.get("findings", "").lower()
+        
+        if any(word in findings for word in ["cannot see", "no teeth", "unclear", "not visible", "unable to identify"]):
+            logger.info("⚠️ AI couldn't identify teeth - converting to warning")
+            return {
+                "warning": "This is not a clear dental image. Please upload a clear photo of your teeth or mouth for dental analysis."
+            }
+    
+    # Check for uncertain food analysis
+    elif task_type == "food":
+        analysis = result.get("dental_analysis", "").lower()
+        
+        if any(word in analysis for word in ["not food", "no food", "unclear", "cannot identify", "not visible"]):
+            logger.info("⚠️ AI couldn't identify food - converting to warning")
+            return {
+                "warning": "This is not a food or drink image. Please upload an image of food or beverages for dental impact analysis."
+            }
+    
+    # Check for uncertain habit analysis
+    elif task_type == "habit":
+        habit = result.get("detected_habit", "").lower()
+        
+        if any(word in habit for word in ["no habit", "unclear", "cannot identify", "not detected", "not visible"]):
+            logger.info("⚠️ AI couldn't identify oral habits - converting to warning")
+            return {
+                "warning": "This is not a clear oral/dental image. Please upload an image showing teeth, bite patterns, or oral habits."
+            }
+    
+    # If all checks pass, return the original result
+    return result
+
+
 async def analyze_image_task(image_base64: str, task_type: str) -> dict:
     """
     REAL VISION API ANALYSIS - Multiple working models with fallbacks
@@ -800,25 +869,30 @@ async def analyze_image_task(image_base64: str, task_type: str) -> dict:
         logger.info(f"🔍 Using OpenRouter Claude 3 Haiku Vision for {task_type} analysis")
         claude_result = await call_openrouter_vision(image_base64, prompt_text)
         if claude_result is not None:
-            return claude_result
+            # Validate result - convert uncertain/unknown responses to warnings
+            validated_result = validate_analysis_result(claude_result, task_type)
+            return validated_result
 
         # 🥈 BACKUP: OpenRouter GPT-4o (ALSO CONFIRMED WORKING)
         logger.info(f"🔍 Trying OpenRouter GPT-4o Vision backup for {task_type} analysis")
         gpt4o_result = await call_openrouter_gpt4o_backup(image_base64, prompt_text)
         if gpt4o_result is not None:
-            return gpt4o_result
+            validated_result = validate_analysis_result(gpt4o_result, task_type)
+            return validated_result
 
         # 🥉 FALLBACK: Google Gemini Vision 
         logger.info(f"🔍 Trying Google Gemini Vision for {task_type} analysis")
         gemini_result = await call_google_gemini_vision(image_base64, prompt_text)
         if gemini_result is not None:
-            return gemini_result
+            validated_result = validate_analysis_result(gemini_result, task_type)
+            return validated_result
 
         # 🔧 LAST RESORT: Hugging Face Vision
         logger.info(f"🔍 Trying Hugging Face Vision for {task_type} analysis")
         hf_result = await call_huggingface_vision(image_base64, prompt_text)
         if hf_result is not None:
-            return hf_result
+            validated_result = validate_analysis_result(hf_result, task_type)
+            return validated_result
 
         # If all APIs fail - this shouldn't happen with working OpenRouter key
         logger.error("All vision APIs failed - check API configuration")
