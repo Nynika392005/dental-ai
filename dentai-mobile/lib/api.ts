@@ -142,8 +142,8 @@ export const testBackendConnection = async () => {
     const response = await api.get('/mobile-test');
     console.log('✅ Backend connected:', response.data);
     return true;
-  } catch (error) {
-    console.error('❌ Backend connection failed:', error.message);
+  } catch (error: any) {
+    console.error('❌ Backend connection failed:', error?.message || 'Unknown error');
     return false;
   }
 };
