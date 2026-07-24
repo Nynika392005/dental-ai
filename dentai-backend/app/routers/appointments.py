@@ -29,18 +29,49 @@ async def get_clinics(
     current_user: User = Depends(get_current_user),
     db=Depends(get_db),
 ):
-    clinic_cursor = db["clinics"].find({})
-    clinics = []
+    """
+    Get list of unique active clinics
+    Removes duplicates based on name and address (case-insensitive)
+    Only shows clinics marked as active (is_active != false)
+    Filters only automated test data (e2e, selenium)
+    """
+    # Find clinics that are active (is_active is not explicitly false)
+    clinic_cursor = db["clinics"].find({
+        "$or": [
+            {"is_active": {"$ne": False}},  # is_active is not False
+            {"is_active": {"$exists": False}}  # or is_active field doesn't exist (default to active)
+        ]
+    })
+    
+    seen = {}
+    unique_clinics = []
+    
     async for c_doc in clinic_cursor:
-        clinics.append(
-            {
-                "id": c_doc["_id"],
-                "name": c_doc["name"],
-                "address": c_doc["address"],
-                "phone": c_doc["phone"],
-            }
-        )
-    return clinics
+        name = c_doc.get("name", "").strip()
+        address = c_doc.get("address", "").strip()
+        
+        # Skip automated test data (e2e, selenium, automation)
+        if any(pattern in name.lower() for pattern in ["e2e", "selenium", "automation"]):
+            continue
+        
+        # Create a unique key (case-insensitive)
+        key = (name.lower(), address.lower())
+        
+        # Skip if we've already seen this clinic
+        if key in seen:
+            continue
+            
+        seen[key] = True
+        unique_clinics.append({
+            "id": c_doc["_id"],
+            "name": name,
+            "address": address,
+            "phone": c_doc.get("phone", ""),
+        })
+    
+    # Sort by name for consistent ordering
+    unique_clinics.sort(key=lambda x: x["name"].lower())
+    return unique_clinics
 
 
 @router.get("/dentists/{clinic_id}")
@@ -49,24 +80,47 @@ async def get_dentists(
     current_user: User = Depends(get_current_user),
     db=Depends(get_db),
 ):
+    """
+    Get list of active dentists for a clinic
+    Only returns dentists with active user accounts
+    Filters only automated test accounts (e2e, selenium, @example.com)
+    """
     dentists_cursor = db["dentists"].find({"clinic_id": clinic_id})
     dentists = []
+    seen_users = set()
+    
     async for d_doc in dentists_cursor:
-        u_doc = await db["users"].find_one({"_id": d_doc["user_id"]})
-        if u_doc:
-            dentists.append(
-                {
-                    "id": d_doc["_id"],
-                    "full_name": u_doc["full_name"],
-                    "specialization": d_doc["specialization"],
-                    "bio": d_doc.get("bio"),
-                }
-            )
+        user_id = d_doc.get("user_id")
+        
+        # Skip if we've already added this user
+        if user_id in seen_users:
+            continue
+            
+        u_doc = await db["users"].find_one({"_id": user_id})
+        
+        # Only include dentists with active user accounts and not automated test accounts
+        if u_doc and u_doc.get("role") == "dentist":
+            email = u_doc.get("email", "").lower()
+            full_name = u_doc.get("full_name", "").lower()
+            
+            # Skip automated test accounts (e2e, selenium, automation, @example.com)
+            test_patterns = ["e2e", "selenium", "@example.com", "automation"]
+            if any(pattern in email or pattern in full_name for pattern in test_patterns):
+                continue
+            
+            seen_users.add(user_id)
+            dentists.append({
+                "id": d_doc["_id"],
+                "full_name": u_doc.get("full_name", "Unknown"),
+                "specialization": d_doc.get("specialization", "General Dentistry"),
+                "bio": d_doc.get("bio", ""),
+            })
+    
+    # Sort by name for consistent ordering
+    dentists.sort(key=lambda x: x["full_name"])
     return dentists
 
 
-# SECURITY: endpoint now requires authentication; date is typed as datetime.date
-# so FastAPI rejects anything that isn't a valid ISO date string automatically.
 @router.get("/slots")
 async def get_available_slots(
     dentist_id: uuid.UUID,          # typed — FastAPI rejects non-UUID strings
@@ -79,10 +133,43 @@ async def get_available_slots(
     if not dentist_doc:
         raise HTTPException(status_code=404, detail="Dentist not found")
 
-    return [
-        "09:00", "09:30", "10:00", "10:30", "11:00",
-        "14:00", "14:30", "15:00", "15:30", "16:00",
+    # Base available slots (9 AM to 4 PM with 30-minute intervals)
+    all_slots = [
+        "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
+        "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
     ]
+    
+    try:
+        # Get current date and time  
+        now = datetime.datetime.now()
+        selected_date = datetime.datetime.combine(date, datetime.time.min)
+        
+        available_slots = []
+        
+        for slot_time in all_slots:
+            try:
+                # Parse slot time
+                hour, minute = map(int, slot_time.split(":"))
+                slot_datetime = selected_date.replace(hour=hour, minute=minute)
+                
+                # Only include future time slots (not past times)
+                if slot_datetime > now:
+                    available_slots.append(slot_time)
+                        
+            except Exception as slot_error:
+                logger.error(f"Error processing slot {slot_time}: {slot_error}")
+                continue
+        
+        # If no future slots available today, return all slots (for future dates)
+        if not available_slots and date > datetime.date.today():
+            return all_slots
+            
+        return available_slots
+        
+    except Exception as e:
+        logger.error(f"Error in get_available_slots: {e}")
+        # Fallback to all slots if there's an error with filtering
+        return all_slots
 
 
 @router.post("/")
@@ -97,19 +184,6 @@ async def create_appointment(
     if dentist_doc.get("clinic_id") != str(uuid.UUID(str(req.clinic_id))):
         raise HTTPException(status_code=400, detail="Dentist does not belong to selected clinic")
 
-    # Double check conflict in memory first
-    conflict = await db["appointments"].find_one(
-        {
-            "dentist_id": str(uuid.UUID(str(req.dentist_id))),
-            "scheduled_at": req.scheduled_at.isoformat()
-            if hasattr(req.scheduled_at, "isoformat")
-            else str(req.scheduled_at),
-            "status": "Upcoming",
-        }
-    )
-    if conflict:
-        raise HTTPException(status_code=409, detail="This time slot is already booked. Please choose another available time.")
-
     appointment = Appointment(
         patient_id=current_user.id,
         dentist_id=req.dentist_id,
@@ -120,12 +194,23 @@ async def create_appointment(
         status="Upcoming"
     )
     
-    # Perform atomic insert inside unique compound index catch block
+    # Rely on atomic database unique constraint to prevent double-booking
+    # The unique compound index on (dentist_id, scheduled_at) with status="Upcoming" 
+    # ensures only one appointment per dentist per time slot
     from pymongo.errors import DuplicateKeyError
     try:
         await db["appointments"].insert_one(appointment.to_dict())
-    except DuplicateKeyError:
-        raise HTTPException(status_code=409, detail="This time slot is already booked. Please choose another available time.")
+    except DuplicateKeyError as e:
+        # This is expected when two users try to book the same slot
+        # Log as INFO, not ERROR, since this is normal behavior
+        logger.info(
+            f"Double booking prevented: dentist_id={req.dentist_id}, "
+            f"scheduled_at={req.scheduled_at}, patient_id={current_user.id}"
+        )
+        raise HTTPException(
+            status_code=409, 
+            detail="This time slot is already booked. Please select another available time."
+        )
 
     clinic_doc = await db["clinics"].find_one({"_id": str(req.clinic_id)})
     dentist_doc2 = await db["dentists"].find_one({"_id": str(req.dentist_id)})
@@ -297,6 +382,11 @@ async def cancel_appointment(
     current_user: User = Depends(get_current_user),
     db=Depends(get_db),
 ):
+    """
+    Cancel an appointment - available to both patients and dentists
+    Patients can only cancel their own upcoming appointments
+    Dentists can cancel appointments with their patients
+    """
     role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
     app_doc = await db["appointments"].find_one({"_id": str(appointment_id)})
     if not app_doc:
@@ -313,22 +403,29 @@ async def cancel_appointment(
     else:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
+    # Check if appointment is in the future
     scheduled_at_str = app_doc.get("scheduled_at")
     if scheduled_at_str:
         scheduled_dt = datetime.datetime.fromisoformat(scheduled_at_str.replace('Z', '+00:00')).replace(tzinfo=None)
         if scheduled_dt < datetime.datetime.utcnow():
             raise HTTPException(status_code=400, detail="Cannot cancel past appointments")
 
+    # Check current status
     current_status = app_doc.get("status", "Upcoming")
     if current_status in ["Completed", "Missed", "Cancelled", "completed", "cancelled", "expired", "missed"]:
-        raise HTTPException(status_code=400, detail="Cannot cancel completed, missed, or cancelled appointments")
+        raise HTTPException(status_code=400, detail="Cannot cancel completed, missed, or already cancelled appointments")
 
+    # Update status to cancelled
     await db["appointments"].update_one(
         {"_id": str(appointment_id)},
         {"$set": {"status": "Cancelled"}}
     )
 
-    return {"message": "Appointment cancelled successfully."}
+    return {
+        "message": "Appointment cancelled successfully", 
+        "appointment_id": str(appointment_id),
+        "cancelled_by": role
+    }
 
 @router.post("/cleanup-duplicates")
 async def cleanup_duplicates(

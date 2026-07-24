@@ -111,3 +111,94 @@ async def scan_image(
     async with concurrency_semaphore:
         result = await analyze_image_task(image_base64, safe_task)
     return result
+
+@router.post("/test-scan")
+async def test_scan_image(
+    request: Request,
+    task_type: str = Form(...),
+    file: UploadFile = File(...),
+    redis = Depends(get_redis)
+):
+    """
+    TEST ENDPOINT: Scan without authentication for debugging
+    Remove this endpoint in production!
+    """
+    # --- Rate Limiting Checks (IP only for test) ---
+    from app.core.limiter import get_ip_key
+    ip_addr = get_ip_key(request)
+    current_time = int(time.time())
+    
+    ip_key = f"rate_limit:test_scan:ip:{ip_addr}"
+    
+    # Rate limit: 10 test scans per minute
+    current_data = await redis.get(ip_key)
+    timestamps = []
+    if current_data:
+        try:
+            timestamps = [t for t in json.loads(current_data) if current_time - t < 60]
+        except Exception:
+            pass
+    
+    if len(timestamps) >= 10:
+        raise HTTPException(status_code=429, detail="Too many test scans. Limit is 10 per minute.")
+    
+    timestamps.append(current_time)
+    await redis.setex(ip_key, 120, json.dumps(timestamps))
+
+    # --- Task Validation ---
+    if task_type.strip().lower() not in ALLOWED_TASK_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid task_type. Must be one of: {sorted(ALLOWED_TASK_TYPES)}",
+        )
+
+    # Validate MIME type from Content-Type header (client-supplied — not trusted alone)
+    if file.content_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="Only image files are allowed (JPEG, PNG, WEBP)",
+        )
+
+    # --- Streaming read and size control ---
+    content_chunks = []
+    total_bytes = 0
+    while True:
+        chunk = await file.read(65536)  # 64 KB chunks
+        if not chunk:
+            break
+        total_bytes += len(chunk)
+        if total_bytes > MAX_FILE_SIZE_BYTES:
+            raise HTTPException(status_code=413, detail="File too large. Maximum size is 2 MB.")
+        content_chunks.append(chunk)
+    
+    content = b"".join(content_chunks)
+
+    # SECURITY: magic-byte validation
+    try:
+        import filetype  # noqa: PLC0415
+    except ImportError:
+        logger.error("'filetype' package is not installed — cannot validate image magic bytes.")
+        raise HTTPException(
+            status_code=500,
+            detail="File validation service unavailable.",
+        )
+
+    kind = filetype.guess(content)
+    if kind is None or kind.mime not in ALLOWED_MIME_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="File content does not match a valid image type.",
+        )
+
+    safe_task = task_type.strip().lower()
+    image_base64 = base64.b64encode(content).decode("utf-8")
+    
+    # Process within concurrency limits
+    async with concurrency_semaphore:
+        result = await analyze_image_task(image_base64, safe_task)
+    
+    # Add test indicator
+    result["test_endpoint"] = True
+    result["note"] = "Using test endpoint - authentication bypassed"
+    
+    return result

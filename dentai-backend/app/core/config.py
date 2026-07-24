@@ -27,11 +27,20 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: List[str] = [
         "http://localhost:5173",
-        "http://localhost:5174",
+        "http://localhost:5174", 
         "http://localhost:5175",
         "http://localhost:3000",
         "http://127.0.0.1:5173",
         "https://nynika392005.github.io",
+        # Mobile development
+        "http://10.43.13.66:8081",
+        "http://10.43.13.66:19000", 
+        "http://10.43.13.66:19001",
+        "http://10.43.13.66:19002",
+        "exp://10.43.13.66:8081",
+        "exp://10.43.13.66:19000",
+        # Allow all for mobile development
+        "*"
     ]
 
     def __init__(self, **values):

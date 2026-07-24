@@ -28,13 +28,14 @@ export default function BookAppointmentScreen() {
     "Filling / Cavity"
   ];
 
-  // Generate next 7 days for selection
-  const dates = Array.from({ length: 7 }, (_, i) => {
+  // Generate next 14 days for selection (exclude past dates)
+  const dates = Array.from({ length: 14 }, (_, i) => {
     const d = new Date();
-    d.setDate(d.getDate() + i);
+    d.setDate(d.getDate() + i); // Start from today
     return {
       label: d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' }),
-      value: d.toISOString().split('T')[0]
+      value: d.toISOString().split('T')[0],
+      isToday: i === 0
     };
   });
 
@@ -92,7 +93,13 @@ export default function BookAppointmentScreen() {
 
     setLoading(true);
     try {
-      const scheduledAt = `${selectedDate}T${selectedTime}:00Z`;
+      // Create a local datetime object from the selected date and time
+      const [hours, minutes] = selectedTime.split(':');
+      const localDateTime = new Date(selectedDate);
+      localDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      
+      // Convert to ISO string (this will be in UTC)
+      const scheduledAt = localDateTime.toISOString();
       
       await api.post('/appointments/', {
         clinic_id: selectedClinic.id,
@@ -192,29 +199,43 @@ export default function BookAppointmentScreen() {
                   style={[styles.dateChip, selectedDate === d.value && styles.activeChip]}
                   onPress={() => setSelectedDate(d.value)}
                 >
-                  <Text style={[styles.dateText, selectedDate === d.value && styles.activeText]}>{d.label.split(',')[0]}</Text>
-                  <Text style={[styles.dateValue, selectedDate === d.value && styles.activeText]}>{d.label.split(',')[1]}</Text>
+                  <Text style={[styles.dateText, selectedDate === d.value && styles.activeText]}>
+                    {d.isToday ? 'Today' : d.label.split(',')[0]}
+                  </Text>
+                  <Text style={[styles.dateValue, selectedDate === d.value && styles.activeText]}>
+                    {d.label.split(',')[1]}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
 
             <Text style={styles.stepTitle}>Available Slots</Text>
-            <View style={styles.slotsGrid}>
-              {availableSlots.map((s) => (
-                <TouchableOpacity
-                  key={s}
-                  style={[styles.slotChip, selectedTime === s && styles.activeChip]}
-                  onPress={() => setSelectedTime(s)}
-                >
-                  <Text style={[styles.slotText, selectedTime === s && styles.activeText]}>{s}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {availableSlots.length === 0 ? (
+              <View style={styles.noSlotsContainer}>
+                <Icon name="clock-alert-outline" size={48} color="#CBD5E1" />
+                <Text style={styles.noSlotsText}>No available slots</Text>
+                <Text style={styles.noSlotsSubtext}>
+                  All slots are booked for this date. Please select a different date.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.slotsGrid}>
+                {availableSlots.map((s) => (
+                  <TouchableOpacity
+                    key={s}
+                    style={[styles.slotChip, selectedTime === s && styles.activeChip]}
+                    onPress={() => setSelectedTime(s)}
+                  >
+                    <Text style={[styles.slotText, selectedTime === s && styles.activeText]}>{s}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
 
             <TouchableOpacity
-              style={[styles.bookBtn, !selectedTime && { opacity: 0.5 }]}
+              style={[styles.bookBtn, (!selectedTime || availableSlots.length === 0) && { opacity: 0.5 }]}
               onPress={handleBook}
-              disabled={loading || !selectedTime}
+              disabled={loading || !selectedTime || availableSlots.length === 0}
             >
               {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.bookBtnText}>Confirm Appointment</Text>}
             </TouchableOpacity>
@@ -266,4 +287,7 @@ const styles = StyleSheet.create({
   slotText: { color: '#1E293B', fontWeight: '500' },
   bookBtn: { backgroundColor: '#1A7FD4', padding: 18, borderRadius: 12, alignItems: 'center', marginTop: 10 },
   bookBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  noSlotsContainer: { alignItems: 'center', padding: 32, marginBottom: 20 },
+  noSlotsText: { fontSize: 16, fontWeight: 'bold', color: '#64748B', marginTop: 12 },
+  noSlotsSubtext: { fontSize: 14, color: '#94A3B8', textAlign: 'center', marginTop: 8, lineHeight: 20 },
 });

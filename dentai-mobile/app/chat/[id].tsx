@@ -11,6 +11,7 @@ import { api } from '../../lib/api';
 import { useAuthStore } from '../../stores/authStore';
 import * as Speech from 'expo-speech';
 import { useAudioRecorder, AudioModule, RecordingPresets } from 'expo-audio';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const QUICK_REPLIES = [
   "How do I brush properly?",
@@ -110,15 +111,47 @@ export default function ActiveChatScreen() {
       await audioRecorder.stop();
       const uri = audioRecorder.uri;
       if (!uri) { setIsTranscribing(false); return; }
-      const formData = new FormData();
-      // @ts-ignore
-      formData.append('file', { uri, name: 'voice.m4a', type: 'audio/m4a' });
-      const res = await api.post('/chat/transcribe', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      const transcribedText: string = res.data?.text?.trim() ?? '';
-      if (transcribedText) setInputText(transcribedText);
-      else { alert("Couldn't catch that. Please try again."); setIsVoiceMode(false); }
+      
+      // Try mobile-transcribe endpoint with base64 (bypasses network blocking)
+      try {
+        console.log('📤 Converting audio to base64 for mobile-transcribe...');
+        
+        // React Native: Read file using expo-file-system
+        const audioBase64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        
+        console.log('📤 Sending to /mobile-transcribe endpoint...');
+        // Use mobile-transcribe endpoint with JSON
+        const res = await api.post('/mobile-transcribe', {
+          audio_base64: audioBase64
+        });
+        
+        console.log('✅ Mobile transcribe successful!');
+        const transcribedText: string = res.data?.text?.trim() ?? '';
+        if (transcribedText) setInputText(transcribedText);
+        else { alert("Couldn't catch that. Please try again."); setIsVoiceMode(false); }
+        
+      } catch (err) {
+        console.error('❌ Mobile transcribe failed, trying multipart fallback', err);
+        
+        // Fallback: Try original multipart endpoint (will likely fail due to network blocking)
+        try {
+          const formData = new FormData();
+          // @ts-ignore
+          formData.append('file', { uri, name: 'voice.m4a', type: 'audio/m4a' });
+          const res = await api.post('/chat/transcribe', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+          const transcribedText: string = res.data?.text?.trim() ?? '';
+          if (transcribedText) setInputText(transcribedText);
+          else { alert("Couldn't catch that. Please try again."); setIsVoiceMode(false); }
+        } catch (fallbackErr) {
+          console.error('❌ Multipart fallback also failed', fallbackErr);
+          throw fallbackErr; // Re-throw to trigger outer catch
+        }
+      }
+      
     } catch (err) {
       console.error('Transcription failed', err);
       alert("Voice service unavailable. Try again.");

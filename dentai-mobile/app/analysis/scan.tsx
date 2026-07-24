@@ -32,34 +32,154 @@ export default function SmartScanScreen() {
     if (!res.canceled) setImage(res.assets[0].uri);
   };
 
+  const testConnectivity = async () => {
+    try {
+      console.log('Testing basic connectivity...');
+      const response = await api.get('/mobile-test');
+      console.log('✅ Basic connectivity test passed:', response.data);
+      
+      // Test JSON base64 upload directly with a tiny test image
+      console.log('Testing JSON base64 upload...');
+      
+      // Create a minimal 1x1 PNG in base64
+      const testImageBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+      
+      const testResponse = await api.post('/mobile-scan', {
+        task_type: 'medicine',
+        image_base64: testImageBase64,
+        filename: 'test.png'
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 30000,
+      });
+      
+      console.log('✅ JSON upload test passed:', testResponse.data);
+      Alert.alert(
+        'Success!', 
+        `✅ Network connectivity working!\n✅ JSON upload working!\n✅ AI analysis: ${testResponse.data.service || 'Ready'}\n\nYour scanner should work perfectly now.`
+      );
+      return true;
+    } catch (error: any) {
+      console.error('❌ Connectivity test failed:', error);
+      Alert.alert(
+        'Connection Test Failed', 
+        `❌ Error: ${error.response?.data?.detail || error.message || 'Unknown error'}\n\nThis will help diagnose the issue.`
+      );
+      return false;
+    }
+  };
+
   const handleScan = async () => {
     if (!image) return;
     setLoading(true);
     setResult(null);
+    
+    console.log('🚀 Starting image upload process...');
+    
+    // Skip multipart attempt - go straight to JSON method that works
     try {
-      const formData = new FormData();
-      formData.append('task_type', type);
-      // @ts-ignore
-      formData.append('file', { uri: image, name: 'photo.jpg', type: 'image/jpeg' });
-
-      // Explicitly include the auth token — passing a custom headers object can shadow
-      // the Authorization header injected by the axios interceptor on some RN/axios versions.
-      const token = useAuthStore.getState().token;
-
-      const res = await api.post('/analysis/scan', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        }
+      console.log('🔄 Converting image to base64...');
+      
+      // Fetch and convert image to base64
+      const response = await fetch(image);
+      const blob = await response.blob();
+      
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          if (result && result.includes(',')) {
+            const base64Data = result.split(',')[1];
+            resolve(base64Data);
+          } else {
+            reject(new Error('Failed to convert image to base64'));
+          }
+        };
+        reader.onerror = () => reject(new Error('FileReader error'));
+        reader.readAsDataURL(blob);
       });
-      console.log('SCAN RESULT:', res.data);
-      setResult(res.data);
-    } catch (e: any) {
-      console.error('Scan error:', e);
-      Alert.alert("Error", e.response?.data?.detail || "Server connection failed.");
-    } finally {
-      setLoading(false);
+      
+      console.log('✅ Base64 conversion complete, uploading via JSON...');
+      
+      const jsonRes = await api.post('/mobile-scan', {
+        task_type: type,
+        image_base64: base64,
+        filename: 'photo.jpg'
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 30000,
+      });
+      
+      console.log('🎉 SUCCESS: Mobile scan worked!');
+      
+      // Filter response based on scan type - each has different relevant fields
+      let cleanResult;
+      
+      if (type === 'medicine') {
+        cleanResult = {
+          name: jsonRes.data.name,
+          medical_purpose: jsonRes.data.medical_purpose,
+          dosage_instructions: jsonRes.data.dosage_instructions,
+          safety_warnings: jsonRes.data.safety_warnings,
+          ai_analysis: jsonRes.data.ai_analysis || jsonRes.data.ai_response || jsonRes.data.analysis || "Analysis completed",
+          confidence: jsonRes.data.confidence
+        };
+      } else if (type === 'tooth') {
+        cleanResult = {
+          findings: jsonRes.data.findings,
+          professional_recommendations: jsonRes.data.professional_recommendations,
+          urgency: jsonRes.data.urgency,
+          ai_analysis: jsonRes.data.ai_analysis || jsonRes.data.ai_response || jsonRes.data.analysis || "Analysis completed",
+          confidence: jsonRes.data.confidence
+        };
+      } else if (type === 'food') {
+        cleanResult = {
+          impact_score: jsonRes.data.impact_score,
+          dental_analysis: jsonRes.data.dental_analysis,
+          preventative_advice: jsonRes.data.preventative_advice,
+          ai_analysis: jsonRes.data.ai_analysis || jsonRes.data.ai_response || jsonRes.data.analysis || "Analysis completed",
+          confidence: jsonRes.data.confidence
+        };
+      } else if (type === 'habit') {
+        cleanResult = {
+          detected_habit: jsonRes.data.detected_habit,
+          confidence_score: jsonRes.data.confidence_score,
+          long_term_risks: jsonRes.data.long_term_risks,
+          clinical_advice: jsonRes.data.clinical_advice,
+          ai_analysis: jsonRes.data.ai_analysis || jsonRes.data.ai_response || jsonRes.data.analysis || "Analysis completed"
+        };
+      } else {
+        // Fallback - show all fields
+        cleanResult = jsonRes.data;
+      }
+      
+      setResult(cleanResult);
+      
+    } catch (jsonError: any) {
+      console.error('💥 Upload failed:');
+      console.error('Error details:', {
+        message: jsonError.message,
+        status: jsonError.response?.status,
+        data: jsonError.response?.data
+      });
+      
+      let errorMessage = 'Upload failed';
+      if (jsonError.response?.status === 401) {
+        errorMessage = 'Please log out and log back in.';
+      } else if (jsonError.response?.data?.detail) {
+        errorMessage = jsonError.response.data.detail;
+      } else if (jsonError.message) {
+        errorMessage = jsonError.message;
+      }
+      
+      Alert.alert("Upload Failed", `Image analysis failed: ${errorMessage}`);
     }
+    
+    setLoading(false);
   };
 
   // Helper to render any value (String, Number, Object, or Array)
@@ -102,7 +222,9 @@ export default function SmartScanScreen() {
           <Icon name="arrow-left" size={24} color="#1E293B" />
         </TouchableOpacity>
         <Text style={styles.title}>{config.title}</Text>
-        <View style={{ width: 24 }} />
+        <TouchableOpacity onPress={testConnectivity}>
+          <Icon name="network" size={24} color="#1A7FD4" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20 }}>

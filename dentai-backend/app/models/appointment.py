@@ -45,6 +45,8 @@ class Appointment:
         self.scheduled_at = kwargs.get("scheduled_at")
         if isinstance(self.scheduled_at, str):
             try:
+                # Parse ISO datetime string and ensure it's timezone-naive
+                # This handles both 'Z' suffix and timezone offsets
                 self.scheduled_at = datetime.fromisoformat(self.scheduled_at.replace('Z', '+00:00')).replace(tzinfo=None)
             except ValueError:
                 try:
@@ -68,8 +70,12 @@ class Appointment:
 
         try:
             raw_status = AppointmentStatus(status_val)
-            now_dt = datetime.utcnow()
+            now_dt = datetime.utcnow().replace(tzinfo=None)  # Make sure it's naive
             scheduled_dt = self.scheduled_at if isinstance(self.scheduled_at, datetime) else now_dt
+            
+            # Ensure scheduled_dt is also naive (remove timezone if present)
+            if isinstance(scheduled_dt, datetime) and scheduled_dt.tzinfo is not None:
+                scheduled_dt = scheduled_dt.replace(tzinfo=None)
             
             if raw_status not in [AppointmentStatus.cancelled, AppointmentStatus.completed] and scheduled_dt < now_dt:
                 self.status = AppointmentStatus.missed
@@ -91,5 +97,5 @@ class Appointment:
             "reason": self.reason,
             "status": self.status.value if isinstance(self.status, enum.Enum) else self.status,
             "notes": self.notes,
-            "created_at": self.created_at
+            "created_at": self.created_at.isoformat() if isinstance(self.created_at, datetime) else self.created_at
         }

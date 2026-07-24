@@ -119,7 +119,7 @@ async def get_bookmarks(
 @router.get("/daily-tip", response_model=OralHealthTipResponse)
 async def get_daily_tip(
     db=Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    # Remove authentication requirement - tips are public educational content
 ):
     tip_cursor = db["oral_health_tips"].find({})
     tips = []

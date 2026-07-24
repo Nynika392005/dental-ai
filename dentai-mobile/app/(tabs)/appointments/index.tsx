@@ -70,12 +70,27 @@ export default function AppointmentsScreen() {
   const handleCancel = (id: string) => {
     Alert.alert(
       'Cancel Appointment',
-      'Are you sure you want to cancel this appointment?',
+      'Are you sure you want to cancel this appointment? This action cannot be undone.',
       [
-        { text: 'No', style: 'cancel' },
-        { text: 'Yes, Cancel', style: 'destructive', onPress: () => handleStatusUpdate(id, 'Cancelled') },
+        { text: 'Keep Appointment', style: 'cancel' },
+        { 
+          text: 'Cancel Appointment', 
+          style: 'destructive', 
+          onPress: () => cancelAppointment(id)
+        },
       ]
     );
+  };
+
+  const cancelAppointment = async (id: string) => {
+    try {
+      await api.delete(`/appointments/${id}`);
+      Alert.alert('Success', 'Appointment cancelled successfully.');
+      loadAppointments(); // Reload the list
+    } catch (e: any) {
+      const errorMsg = e.response?.data?.detail || 'Could not cancel appointment. Please try again.';
+      Alert.alert('Error', errorMsg);
+    }
   };
 
   const filters = ['all', 'Upcoming', 'Completed', 'Cancelled', 'Missed'];
