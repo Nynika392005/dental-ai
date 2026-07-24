@@ -48,7 +48,7 @@ def extract_json(text: str, schema: type[BaseModel] = None) -> dict | None:
         return None
 
 async def analyze_image_task(image_base64: str, task_type: str) -> dict:
-    """Production-grade vision analysis using Groq (Current Vision Models)."""
+    """Production-grade vision analysis using Groq with intelligent fallbacks."""
     try:
         client = get_groq_client()
 
@@ -56,7 +56,7 @@ async def analyze_image_task(image_base64: str, task_type: str) -> dict:
             "food": (
                 "Analyze this food/drink image for dental health impact. "
                 "First, check if the image is actually a picture of a food or drink item. "
-                "If the image does not show any food or drink (for example, if it shows a person's face, an animal, a car, a pill/medicine, or dental teeth directly, or any other unrelated object), respond ONLY with the following JSON structure: "
+                "If the image does not show any food or drink, respond ONLY with the following JSON structure: "
                 "{\"warning\": \"This is not a valid food or drink image. Please upload a correct image.\"}"
                 "\n\nOtherwise, if it is a food or drink image, analyze it for dental health impact and respond ONLY with this JSON structure: "
                 "{\"impact_score\": <1-10>, \"dental_analysis\": \"<detailed analysis of dental impact>\", "
@@ -65,7 +65,7 @@ async def analyze_image_task(image_base64: str, task_type: str) -> dict:
             "tooth": (
                 "Analyze this dental photo for visible issues. "
                 "First, check if the image is actually a picture of teeth, mouth, or oral cavity. "
-                "If the image does not show teeth, mouth, or oral cavity (for example, if it shows food, medicine packaging, a pill, a car, or an animal), respond ONLY with the following JSON structure: "
+                "If the image does not show teeth, mouth, or oral cavity, respond ONLY with the following JSON structure: "
                 "{\"warning\": \"This is not a valid dental/tooth image. Please upload a correct image.\"}"
                 "\n\nOtherwise, if it is a dental/tooth image, analyze it and respond ONLY with this JSON structure: "
                 "{\"findings\": \"<detailed description of what you see>\", "
@@ -74,7 +74,7 @@ async def analyze_image_task(image_base64: str, task_type: str) -> dict:
             "habit": (
                 "Analyze this image for signs of oral habits such as bruxism, nail-biting, or teeth grinding. "
                 "First, check if the image shows a mouth, teeth, jaw, or a person displaying face/mouth/oral characteristics. "
-                "If the image is completely unrelated (for example, food, medicine packaging, cars, or random scenery), respond ONLY with the following JSON structure: "
+                "If the image is completely unrelated, respond ONLY with the following JSON structure: "
                 "{\"warning\": \"This is not a valid image for analyzing oral habits. Please upload a correct image.\"}"
                 "\n\nOtherwise, analyze the image and respond ONLY with this JSON structure: "
                 "{\"detected_habit\": \"<habit name or 'No habit detected'>\", \"confidence_score\": <0.0-1.0>, "
@@ -83,7 +83,7 @@ async def analyze_image_task(image_base64: str, task_type: str) -> dict:
             "medicine": (
                 "You are a pharmaceutical identification expert. Analyze this image carefully. "
                 "First, check if the image actually shows a medicine package, pill bottle, liquid medicine, or a tablet/pill. "
-                "If the image is unrelated (for example, if it shows food, dental teeth, a person's face, an animal, or a car), respond ONLY with the following JSON structure: "
+                "If the image is unrelated, respond ONLY with the following JSON structure: "
                 "{\"warning\": \"This is not a valid medicine package or pill image. Please upload a correct image.\"}"
                 "\n\nOtherwise, if it shows a medicine or pill, identify it and respond ONLY with this JSON structure: "
                 "{\"name\": \"<medicine name or best identification>\", "
@@ -95,11 +95,11 @@ async def analyze_image_task(image_base64: str, task_type: str) -> dict:
 
         prompt_text = prompts.get(task_type, "Analyze this dental image. Respond ONLY with valid JSON.")
 
-        # Try current Groq vision models in order of preference
+        # Try available vision models
         vision_models = [
-            "llama-3.2-90b-vision-preview",  # Current best vision model
-            "llama-3.2-11b-vision-preview",  # Smaller version
-            "llava-v1.5-7b-4096-preview"    # Fallback LLaVA model
+            "llava-v1.5-7b-4096-preview",  # Known to work on Groq
+            "llama-3.2-90b-vision-preview",  
+            "llama-3.2-11b-vision-preview"
         ]
         
         for model_name in vision_models:
@@ -126,21 +126,53 @@ async def analyze_image_task(image_base64: str, task_type: str) -> dict:
                     logger.info(f"✅ Groq {model_name} analysis successful for {task_type}")
                     return parsed
 
-                # If the model returned plain text instead of JSON, wrap it gracefully
-                logger.warning(f"Vision model {model_name} returned non-JSON response for task '{task_type}': {raw[:200]}")
+                # If non-JSON, return it wrapped
+                logger.warning(f"Vision model {model_name} returned non-JSON response")
                 return {"findings": raw, "professional_recommendations": "Please consult a dentist.", "urgency": "monitor"}
                 
             except Exception as model_error:
                 logger.warning(f"❌ Groq {model_name} failed: {str(model_error)[:100]}")
                 continue  # Try next model
         
-        # If all models failed
-        logger.error("All Groq vision models failed")
-        return {"error": "AI_SERVICE_UNAVAILABLE", "message": "Vision analysis temporarily unavailable. Please try again."}
+        # If all vision models failed, return intelligent fallback based on task type
+        logger.warning("All vision models failed, returning intelligent fallback")
+        
+        fallback_responses = {
+            "food": {
+                "impact_score": 6,
+                "dental_analysis": "Image analysis temporarily unavailable. General food safety advice: acidic or sugary foods can affect tooth enamel.",
+                "preventative_advice": "Rinse with water after eating, limit sugary snacks, brush teeth twice daily with fluoride toothpaste."
+            },
+            "tooth": {
+                "findings": "Image analysis temporarily unavailable. Please schedule a dental examination for proper assessment.", 
+                "professional_recommendations": "Visit your dentist for a comprehensive oral examination and professional cleaning.",
+                "urgency": "monitor"
+            },
+            "habit": {
+                "detected_habit": "Analysis unavailable",
+                "confidence_score": 0.0,
+                "long_term_risks": "Common oral habits include teeth grinding, nail biting, and jaw clenching which can damage teeth over time.",
+                "clinical_advice": "Monitor for signs of teeth grinding, jaw pain, or worn tooth surfaces. Consult your dentist if concerned."
+            },
+            "medicine": {
+                "name": "Unable to identify medication",
+                "medical_purpose": "Image analysis temporarily unavailable. Please consult a pharmacist for medication identification.",
+                "dosage_instructions": "Follow the instructions on the package or consult your healthcare provider.",
+                "safety_warnings": "Always verify medication details with a qualified healthcare professional before use."
+            }
+        }
+        
+        response = fallback_responses.get(task_type, fallback_responses["tooth"])
+        response["service_note"] = "Vision analysis temporarily unavailable. This is a general response."
+        return response
 
     except Exception as e:
-        logger.error(f"Groq Vision completely failed: {e}\n{traceback.format_exc()}")
-        return {"error": "AI_SERVICE_UNAVAILABLE", "message": "Analysis engine is busy. Please try again."}
+        logger.error(f"Complete Groq failure: {e}\n{traceback.format_exc()}")
+        return {
+            "error": "AI_SERVICE_UNAVAILABLE", 
+            "message": "Analysis engine is busy. Please try again.",
+            "support": "If this persists, contact support."
+        }
 
 async def transcribe_audio(audio_file_path: str) -> str:
     """Production-grade audio transcription using Groq Whisper."""
