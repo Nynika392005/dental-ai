@@ -735,25 +735,33 @@ async def analyze_image_task(image_base64: str, task_type: str) -> dict:
     try:
         prompts = {
             "food": (
-                "Analyze this food/drink image for dental health impact. "
+                "STEP 1 - IMAGE RELEVANCE CHECK: First, determine if this image shows FOOD or DRINK items.\n"
+                "If the image does NOT show any food or beverage, respond with: {\"error\": \"irrelevant_image\", \"message\": \"This image does not show food or drink. Please upload an image of food or beverages for dental impact analysis.\"}\n\n"
+                "STEP 2 - FOOD ANALYSIS (only if image is relevant): Analyze this food/drink image for dental health impact.\n"
                 "Respond ONLY with this JSON structure: "
                 "{\"impact_score\": <1-10>, \"dental_analysis\": \"<detailed analysis of dental impact>\", "
                 "\"preventative_advice\": \"<specific advice to protect teeth>\"}"
             ),
             "tooth": (
-                "Analyze this dental photo for visible issues. "
+                "STEP 1 - IMAGE RELEVANCE CHECK: First, determine if this image shows TEETH, MOUTH, or ORAL STRUCTURES.\n"
+                "If the image does NOT show teeth, gums, mouth, or any dental/oral structures, respond with: {\"error\": \"irrelevant_image\", \"message\": \"This image does not show teeth or oral structures. Please upload a clear photo of your teeth or mouth for dental analysis.\"}\n\n"
+                "STEP 2 - DENTAL ANALYSIS (only if image is relevant): Analyze this dental photo for visible issues.\n"
                 "Respond ONLY with this JSON structure: "
                 "{\"findings\": \"<detailed description of what you see>\", "
                 "\"professional_recommendations\": \"<specific dental advice>\", \"urgency\": \"urgent|soon|monitor\"}"
             ),
             "habit": (
-                "Analyze this image for signs of oral habits. "
+                "STEP 1 - IMAGE RELEVANCE CHECK: First, determine if this image shows ORAL HABITS, MOUTH, TEETH, or BITE PATTERNS.\n"
+                "If the image does NOT show any oral habits, teeth, mouth, or dental structures, respond with: {\"error\": \"irrelevant_image\", \"message\": \"This image does not show oral habits or dental structures. Please upload an image showing teeth, bite patterns, or oral habits.\"}\n\n"
+                "STEP 2 - HABIT ANALYSIS (only if image is relevant): Analyze this image for signs of oral habits.\n"
                 "Respond ONLY with this JSON structure: "
                 "{\"detected_habit\": \"<habit name or 'No obvious habits detected'>\", \"confidence_score\": <0.0-1.0>, "
                 "\"long_term_risks\": \"<potential risks if untreated>\", \"clinical_advice\": \"<recommended action>\"}"
             ),
             "medicine": (
-                "You are a pharmaceutical expert. Look at this medication image carefully. "
+                "STEP 1 - IMAGE RELEVANCE CHECK: First, determine if this image shows MEDICATION (pills, tablets, capsules, medicine bottles, or pharmaceutical packaging).\n"
+                "If the image does NOT show any medication, pills, bottles, or pharmaceutical items, respond with: {\"error\": \"irrelevant_image\", \"message\": \"This image does not show medication. Please upload a clear photo of pills, tablets, medicine bottles, or pharmaceutical packaging.\"}\n\n"
+                "STEP 2 - MEDICATION ANALYSIS (only if image is relevant): You are a pharmaceutical expert analyzing medication.\n"
                 "CRITICAL RULES:\n"
                 "1. ONLY identify the medication if you can clearly see text, brand names, imprints, or distinctive packaging\n"
                 "2. If the pill/tablet has NO visible text, markings, or identifiable features, you MUST respond with name='Cannot identify - no visible markings'\n"
