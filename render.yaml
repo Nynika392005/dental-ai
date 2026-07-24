@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: dentai-backend
+    env: python
+    region: singapore
+    plan: free
+    buildCommand: pip install -r dentai-backend/requirements.txt
+    startCommand: cd dentai-backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: MONGODB_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: ENVIRONMENT
+        value: production

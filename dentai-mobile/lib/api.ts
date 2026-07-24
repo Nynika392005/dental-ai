@@ -1,12 +1,13 @@
 import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
 
-// Try multiple backend URLs in case of network issues
+// Backend URLs - automatically switches between development and production
 const BACKEND_URLS = [
-  'http://10.43.13.66:8000',    // Primary - your PC's IP address
-  'http://172.19.112.1:8000',   // Alternative IP
-  'http://192.168.1.100:8000',  // Common local network IP range
-  'http://localhost:8000',      // Localhost (only works in emulator)
+  'https://your-app-name.onrender.com',  // PRODUCTION - Update this with your actual Render URL
+  'http://172.20.10.2:8000',             // LOCAL DEV - Primary IP
+  'http://172.19.112.1:8000',            // LOCAL DEV - Alternative IP
+  'http://192.168.1.100:8000',           // LOCAL DEV - Common local network IP
+  'http://localhost:8000',               // LOCAL DEV - Localhost (emulator only)
 ];
 
 let currentBackendUrl = BACKEND_URLS[0];
