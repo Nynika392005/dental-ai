@@ -19,7 +19,7 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Setup Node.js (for report generator)
+    - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
@@ -32,7 +32,7 @@ jobs:
     - name: Run Backend API Test Suite
       run: |
         cd dentai-backend/backend-tests
-        python test_runner.py
+        node test_runner.js
 
   web-selenium-tests:
     name: 🌐 Web Application Selenium Tests (340 Specs)
@@ -56,7 +56,7 @@ jobs:
         CI: true
       run: |
         cd dentai-web/selenium-tests
-        npm test
+        node test-runner.js
 
   mobile-appium-tests:
     name: 📱 Mobile Android Appium Tests (335 Specs)
@@ -78,7 +78,7 @@ jobs:
     - name: Run Mobile Appium Test Suite
       run: |
         cd dentai-mobile/appium-tests
-        npm test
+        node test-runner.js
 
   load-stress-tests:
     name: 🚀 High-Concurrency Load Tests (300 Scenarios)
@@ -100,4 +100,4 @@ jobs:
     - name: Run High-Concurrency Load Test Suite
       run: |
         cd load-tests
-        npm test
+        node load_runner.js
