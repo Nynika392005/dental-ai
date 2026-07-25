@@ -1,6 +1,11 @@
+const path = require('path');
+
+const apkPath = process.env.APP_PATH || path.join(__dirname, 'bin', 'dentai-app.apk');
+const deviceName = process.env.ANDROID_DEVICE_NAME || 'Android Emulator';
+
 exports.config = {
     runner: 'local',
-    port: 4723,
+    port: parseInt(process.env.APPIUM_PORT || '4723', 10),
     specs: [
         './tests/**/*.test.js'
     ],
@@ -8,12 +13,15 @@ exports.config = {
     maxInstances: 1,
     capabilities: [{
         platformName: 'Android',
-        'appium:deviceName': 'Medium_Phone_API_36.1',
+        'appium:deviceName': deviceName,
         'appium:automationName': 'UiAutomator2',
-        'appium:app': 'c:/Users/B Nynika/pdd/dentai-mobile/pdd-1/dental-ai/dentai-mobile/appium-tests/bin/dentai-app.apk',
+        'appium:app': apkPath,
         'appium:autoGrantPermissions': true,
         'appium:newCommandTimeout': 240,
-        'appium:adbExecTimeout': 60000
+        'appium:adbExecTimeout': 60000,
+        'appium:ensureWebviewsHavePages': true,
+        'appium:nativeWebScreenshot': true,
+        'appium:connectHardwareKeyboard': true
     }],
     logLevel: 'info',
     bail: 0,

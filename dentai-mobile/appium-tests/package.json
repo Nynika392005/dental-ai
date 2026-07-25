@@ -1,10 +1,16 @@
 {
   "name": "dentai-appium-tests",
   "version": "1.0.0",
-  "description": "Appium E2E mobile tests for DentAI",
-  "main": "index.js",
+  "description": "Appium E2E mobile testing suite and Excel analysis generator for DentAI Android Application",
+  "main": "test-runner.js",
   "scripts": {
-    "test": "wdio run wdio.conf.js"
+    "test": "wdio run wdio.conf.js",
+    "test:excel": "node test-runner.js",
+    "test:runner": "node test-runner.js"
+  },
+  "dependencies": {
+    "mocha": "^10.2.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@wdio/cli": "^9.29.1",
