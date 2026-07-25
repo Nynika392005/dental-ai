@@ -1,0 +1,13 @@
+{
+  "name": "dentai-load-tests",
+  "version": "1.0.0",
+  "description": "DentAI Platform High-Concurrency Load & Stress Performance Testing Suite",
+  "main": "load_runner.js",
+  "scripts": {
+    "test": "node load_runner.js",
+    "load-test": "node load_runner.js"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}
