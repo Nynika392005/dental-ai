@@ -94,6 +94,17 @@ export default function ActiveChatScreen() {
     try {
       const status = await AudioModule.requestRecordingPermissionsAsync();
       if (!status.granted) { alert("Please allow microphone access."); return; }
+      
+      // Enable recording mode for iOS and Android
+      try {
+        await AudioModule.setAudioModeAsync({
+          allowsRecording: true,
+          playsInSilentMode: true,
+        });
+      } catch (e) {
+        console.warn('AudioModule.setAudioModeAsync warning:', e);
+      }
+
       Speech.stop();
       await new Promise(r => setTimeout(r, 600));
       await audioRecorder.prepareToRecordAsync();
