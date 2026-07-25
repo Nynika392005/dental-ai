@@ -15,6 +15,8 @@ dental-ai/
 
 **Deployed backend:** `https://dental-ai-8qr1.onrender.com`
 
+**GitHub Actions CI/CD Excel Test Reports:** 7,200 Total Test Specs & Load Scenarios (Backend, Web, Mobile, Load) with 1-click Excel artifact downloads.
+
 ---
 
 ## Backend Setup
