@@ -6,9 +6,16 @@ node_modules/
 dist/
 web-build/
 
-# Ignore native directories (EAS rebuilds them anyway)
+# Ignore native directories (EAS prebuilds them during cloud build)
 ios/
 android/
+ios/**
+android/**
 
-# Ignore large testing files (like the 85MB APK)
+# Ignore large testing files and binaries
 appium-tests/
+appium-tests/**
+*.apk
+*.aab
+*.zip
+*.tar.gz
