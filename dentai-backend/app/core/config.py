@@ -32,7 +32,11 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://127.0.0.1:5173",
         "https://nynika392005.github.io",
-        # Mobile development
+        # Mobile development (Current Wi-Fi network)
+        "http://172.23.50.137:8081",
+        "http://172.23.50.137:8000",
+        "http://172.23.50.137:19000",
+        "exp://172.23.50.137:8081",
         "http://10.43.13.66:8081",
         "http://10.43.13.66:19000", 
         "http://10.43.13.66:19001",

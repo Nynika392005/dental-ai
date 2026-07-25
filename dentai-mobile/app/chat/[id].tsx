@@ -92,17 +92,27 @@ export default function ActiveChatScreen() {
 
   const startRecording = async () => {
     try {
-      const status = await AudioModule.requestRecordingPermissionsAsync();
-      if (!status.granted) { alert("Please allow microphone access."); return; }
-      
-      // Enable recording mode for iOS and Android
-      try {
-        await AudioModule.setAudioModeAsync({
-          allowsRecording: true,
-          playsInSilentMode: true,
-        });
-      } catch (e) {
-        console.warn('AudioModule.setAudioModeAsync warning:', e);
+      if (Platform.OS !== 'web') {
+        const status = await AudioModule.requestRecordingPermissionsAsync();
+        if (!status.granted) { alert("Please allow microphone access."); return; }
+        
+        // Enable recording mode for iOS and Android
+        try {
+          await AudioModule.setAudioModeAsync({
+            allowsRecording: true,
+            playsInSilentMode: true,
+          });
+        } catch (e) {
+          console.warn('AudioModule.setAudioModeAsync warning:', e);
+        }
+      } else {
+        if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          try {
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+          } catch (micErr) {
+            console.warn('Web microphone permission check warning:', micErr);
+          }
+        }
       }
 
       Speech.stop();
@@ -127,15 +137,42 @@ export default function ActiveChatScreen() {
       try {
         console.log('📤 Converting audio to base64 for mobile-transcribe...');
         
-        // React Native: Read file using expo-file-system
-        const audioBase64 = await FileSystem.readAsStringAsync(uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
+        let audioBase64: string;
+        let fileExt = 'm4a';
+
+        const isWebUri = Platform.OS === 'web' || uri.startsWith('blob:') || uri.startsWith('http');
+
+        if (isWebUri) {
+          console.log('🌐 Web platform detected, converting blob URL to base64...');
+          const blobRes = await fetch(uri);
+          const blob = await blobRes.blob();
+
+          if (blob.type.includes('webm')) fileExt = 'webm';
+          else if (blob.type.includes('mp4') || blob.type.includes('m4a')) fileExt = 'm4a';
+          else if (blob.type.includes('wav')) fileExt = 'wav';
+          else if (blob.type.includes('ogg')) fileExt = 'ogg';
+
+          audioBase64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const result = reader.result as string;
+              const base64 = result.includes(',') ? result.split(',')[1] : result;
+              resolve(base64);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        } else {
+          audioBase64 = await FileSystem.readAsStringAsync(uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+        }
         
         console.log('📤 Sending to /mobile-transcribe endpoint...');
         // Use mobile-transcribe endpoint with JSON
         const res = await api.post('/mobile-transcribe', {
-          audio_base64: audioBase64
+          audio_base64: audioBase64,
+          file_ext: fileExt
         });
         
         console.log('✅ Mobile transcribe successful!');
@@ -146,11 +183,18 @@ export default function ActiveChatScreen() {
       } catch (err) {
         console.error('❌ Mobile transcribe failed, trying multipart fallback', err);
         
-        // Fallback: Try original multipart endpoint (will likely fail due to network blocking)
+        // Fallback: Try original multipart endpoint
         try {
           const formData = new FormData();
-          // @ts-ignore
-          formData.append('file', { uri, name: 'voice.m4a', type: 'audio/m4a' });
+          const isWebUri = Platform.OS === 'web' || uri.startsWith('blob:') || uri.startsWith('http');
+          if (isWebUri) {
+            const blobRes = await fetch(uri);
+            const blob = await blobRes.blob();
+            formData.append('file', blob, `voice.m4a`);
+          } else {
+            // @ts-ignore
+            formData.append('file', { uri, name: 'voice.m4a', type: 'audio/m4a' });
+          }
           const res = await api.post('/chat/transcribe', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
           });

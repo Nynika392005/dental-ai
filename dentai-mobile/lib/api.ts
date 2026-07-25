@@ -3,6 +3,7 @@ import { useAuthStore } from '../stores/authStore';
 
 // Backend URLs - automatically switches between development and production
 const BACKEND_URLS = [
+  'http://172.23.50.137:8000',            // LOCAL DEV - Current Wi-Fi IP
   'https://dental-ai-8qr1.onrender.com',  // PRODUCTION - Render deployment
   'http://172.20.10.2:8000',              // LOCAL DEV - Primary IP
   'http://172.19.112.1:8000',             // LOCAL DEV - Alternative IP

@@ -336,6 +336,10 @@ async def mobile_transcribe_workaround(
     try:
         # Extract audio base64 from request
         audio_base64 = request.get("audio_base64")
+        file_ext = request.get("file_ext", "m4a")
+        if file_ext not in ["m4a", "mp3", "webm", "wav", "ogg", "mp4", "aac", "3gp"]:
+            file_ext = "m4a"
+
         if not audio_base64:
             raise HTTPException(status_code=400, detail="Missing audio_base64")
         
@@ -350,7 +354,7 @@ async def mobile_transcribe_workaround(
         os.makedirs(temp_dir, exist_ok=True)
         
         import uuid
-        temp_file_path = os.path.join(temp_dir, f"{uuid.uuid4()}.m4a")
+        temp_file_path = os.path.join(temp_dir, f"{uuid.uuid4()}.{file_ext}")
         
         try:
             with open(temp_file_path, "wb") as f:

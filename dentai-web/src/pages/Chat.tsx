@@ -57,6 +57,8 @@ export const Chat: React.FC = () => {
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const didAutoSend = useRef(false);
 
   // Stop speech when leaving the chat page
@@ -112,7 +114,10 @@ export const Chat: React.FC = () => {
         setIsListening(false);
         if (text.trim()) handleSendMessage(text);
       };
-      rec.onerror = () => setIsListening(false);
+      rec.onerror = (e: any) => {
+        console.warn('SpeechRecognition error:', e);
+        setIsListening(false);
+      };
       rec.onend = () => setIsListening(false);
       recognitionRef.current = rec;
     }
@@ -145,17 +150,81 @@ export const Chat: React.FC = () => {
     speak("I am ready. Please click the microphone icon and tell me your question. I will read the answer back to you.");
   };
 
+  const startMediaRecorderFallback = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        setIsListening(false);
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        stream.getTracks().forEach(track => track.stop());
+
+        if (audioBlob.size === 0) return;
+
+        try {
+          const reader = new FileReader();
+          reader.readAsDataURL(audioBlob);
+          reader.onloadend = async () => {
+            const base64data = reader.result as string;
+            const base64 = base64data.includes(',') ? base64data.split(',')[1] : base64data;
+            try {
+              const res = await api.post('/mobile-transcribe', {
+                audio_base64: base64,
+                file_ext: 'webm'
+              });
+              const text = res.data?.text?.trim();
+              if (text) {
+                setInputText(text);
+                handleSendMessage(text);
+              }
+            } catch (err) {
+              console.error('MediaRecorder transcription failed', err);
+              alert("Voice service unavailable. Please try again.");
+            }
+          };
+        } catch (e) {
+          console.error('Error processing recorded audio', e);
+        }
+      };
+
+      mediaRecorder.start();
+      setIsListening(true);
+      window.speechSynthesis?.cancel();
+    } catch (err) {
+      console.error('Failed to get microphone access', err);
+      alert("Could not access microphone. Please allow microphone access.");
+    }
+  };
+
   const toggleVoiceListening = () => {
-    if (!recognitionRef.current) {
-      alert("Voice recognition is not supported in this browser. Please try Chrome.");
+    if (isListening) {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
+      } else if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch (e) {}
+      }
+      setIsListening(false);
       return;
     }
-    if (isListening) {
-      recognitionRef.current.stop();
+
+    if (recognitionRef.current) {
+      try {
+        window.speechSynthesis?.cancel();
+        setIsListening(true);
+        recognitionRef.current.start();
+      } catch (err) {
+        console.warn('SpeechRecognition failed to start, falling back to MediaRecorder', err);
+        startMediaRecorderFallback();
+      }
     } else {
-      window.speechSynthesis?.cancel();
-      setIsListening(true);
-      recognitionRef.current.start();
+      startMediaRecorderFallback();
     }
   };
 
