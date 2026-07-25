@@ -1,4 +1,4 @@
-name: Selenium E2E Login Testing
+name: DentAI Complete Platform Test Suite (Backend, Web, Mobile, Load)
 
 on:
   push:
@@ -7,9 +7,36 @@ on:
     branches: [ master, main ]
 
 jobs:
-  e2e-tests:
+  backend-api-tests:
+    name: ⚡ FastAPI Backend API Tests (335 Specs)
     runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
 
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install Backend Test Dependencies
+      run: |
+        cd dentai-backend/backend-tests
+        npm ci
+
+    - name: Run Backend API Test Suite
+      run: |
+        cd dentai-backend/backend-tests
+        node test_runner.js
+
+  web-selenium-tests:
+    name: 🌐 Web Application Selenium Tests (340 Specs)
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
@@ -18,29 +45,59 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        cache: 'npm'
-        cache-dependency-path: 'dentai-web/package-lock.json'
-
-    - name: Install Frontend Dependencies
-      run: |
-        cd dentai-web
-        npm ci
 
     - name: Install Selenium Test Dependencies
       run: |
         cd dentai-web/selenium-tests
         npm ci
 
-    - name: Install Google Chrome and ChromeDriver
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y google-chrome-stable
-        # Chrome options: headless setup
-        
-    - name: Run Selenium Tests
+    - name: Run Web Selenium Test Suite
       env:
         CI: true
-        TEST_URL: https://Nynika392005.github.io/dental-ai/
       run: |
         cd dentai-web/selenium-tests
+        npm test
+
+  mobile-appium-tests:
+    name: 📱 Mobile Android Appium Tests (335 Specs)
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install Appium Test Dependencies
+      run: |
+        cd dentai-mobile/appium-tests
+        npm ci
+
+    - name: Run Mobile Appium Test Suite
+      run: |
+        cd dentai-mobile/appium-tests
+        npm test
+
+  load-stress-tests:
+    name: 🚀 High-Concurrency Load Tests (300 Scenarios)
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install Load Test Dependencies
+      run: |
+        cd load-tests
+        npm ci
+
+    - name: Run High-Concurrency Load Test Suite
+      run: |
+        cd load-tests
         npm test
