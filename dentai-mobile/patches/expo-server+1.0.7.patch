@@ -1,0 +1,38 @@
+diff --git a/node_modules/expo-server/build/cjs/vendor/http.js b/node_modules/expo-server/build/cjs/vendor/http.js
+index 4ffaac4..d2afa96 100644
+--- a/node_modules/expo-server/build/cjs/vendor/http.js
++++ b/node_modules/expo-server/build/cjs/vendor/http.js
+@@ -109,7 +109,13 @@ async function respond(res, expoRes) {
+         }
+     }
+     if (expoRes.body) {
+-        await (0, promises_1.pipeline)(node_stream_1.Readable.fromWeb(expoRes.body), res);
++        try {
++            await (0, promises_1.pipeline)(node_stream_1.Readable.fromWeb(expoRes.body), res);
++        } catch (err) {
++            if (err && err.code !== 'ERR_STREAM_DESTROYED' && !err.message?.includes('closed or destroyed')) {
++                console.error('[expo-server] stream error:', err.message);
++            }
++        }
+     }
+     else {
+         res.end();
+diff --git a/node_modules/expo-server/build/mjs/vendor/http.js b/node_modules/expo-server/build/mjs/vendor/http.js
+index be9397c..2f48121 100644
+--- a/node_modules/expo-server/build/mjs/vendor/http.js
++++ b/node_modules/expo-server/build/mjs/vendor/http.js
+@@ -101,7 +101,13 @@ export async function respond(res, expoRes) {
+         }
+     }
+     if (expoRes.body) {
+-        await pipeline(Readable.fromWeb(expoRes.body), res);
++        try {
++            await pipeline(Readable.fromWeb(expoRes.body), res);
++        } catch (err) {
++            if (err && err.code !== 'ERR_STREAM_DESTROYED' && !err.message?.includes('closed or destroyed')) {
++                console.error('[expo-server] stream error:', err.message);
++            }
++        }
+     }
+     else {
+         res.end();
