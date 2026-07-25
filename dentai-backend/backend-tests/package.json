@@ -1,0 +1,13 @@
+{
+  "name": "dentai-backend-tests",
+  "version": "1.0.0",
+  "description": "DentAI FastAPI Backend API Testing Suite & Excel Analysis Generator",
+  "main": "test_runner.js",
+  "scripts": {
+    "test": "node test_runner.js",
+    "test:excel": "node test_runner.js"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}
