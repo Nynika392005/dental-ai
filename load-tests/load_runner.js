@@ -17,7 +17,7 @@ scenarioFiles.forEach(file => console.log(`   • ${file}`));
 console.log('\n----------------------------------------------------------------');
 
 for (const file of scenarioFiles) {
-  const fullPath = path.join(testsDir = scenariosDir, file);
+  const fullPath = path.join(scenariosDir, file);
   console.log(`\n▶️ Executing Load Scenario Module: ${file}`);
 
   global.describeLoad = (categoryName, fn) => {
