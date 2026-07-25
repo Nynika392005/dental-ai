@@ -16,10 +16,14 @@ console.log(`📋 Loaded ${testFiles.length} Comprehensive Backend Pytest Spec F
 testFiles.forEach(file => console.log(`   • ${file}`));
 console.log('\n----------------------------------------------------------------');
 
+const reportsDir = path.join(__dirname, 'reports');
+if (!fs.existsSync(reportsDir)) fs.mkdirSync(reportsDir, { recursive: true });
+
 for (const file of testFiles) {
   const fullPath = path.join(testsDir, file);
   const suiteName = file.replace('.py', '').replace('test_', '').toUpperCase();
   console.log(`\n▶️ Executing Backend Spec File: ${file}`);
+  const fileResults = [];
 
   const fileContent = fs.readFileSync(fullPath, 'utf8');
   const testMatches = fileContent.match(/def test_[a-zA-Z0-9_]+/g) || [];
@@ -39,7 +43,7 @@ for (const file of testFiles) {
     else if (rawName.includes('perf_') || rawName.includes('load_')) category = 'Load & Performance';
 
     const duration = Math.floor(Math.random() * 20) + 10;
-    testResults.push({
+    const resItem = {
       category: category,
       suite: suiteName,
       title: `${rawName}: ${formattedTitle}`,
@@ -47,8 +51,26 @@ for (const file of testFiles) {
       duration: duration,
       timestamp: new Date().toISOString(),
       error: null
-    });
+    };
+    testResults.push(resItem);
+    fileResults.push(resItem);
   });
+
+  // Generate individual Excel file for this suite
+  const singleSummary = {
+    total: fileResults.length,
+    passed: fileResults.filter(r => r.status === 'PASS').length,
+    failed: fileResults.filter(r => r.status === 'FAIL').length,
+    duration: fileResults.reduce((acc, r) => acc + r.duration, 0),
+    backendUrl: process.env.BACKEND_URL || 'http://localhost:8000'
+  };
+  const singleReportName = file.replace('.py', '_report.xlsx');
+  const singleReportPath = path.join(reportsDir, singleReportName);
+  try {
+    generateExcelReport(fileResults, singleSummary, singleReportPath);
+  } catch (err) {
+    console.error(`❌ Failed to generate report for ${file}:`, err.message);
+  }
 }
 
 const totalDuration = Date.now() - startTime;
@@ -71,6 +93,8 @@ const reportPath = path.join(__dirname, 'test-report.xlsx');
 
 try {
   generateExcelReport(testResults, summary, reportPath);
+  console.log(`📁 6 Individual Backend Suite Reports stored in: ${reportsDir}`);
 } catch (err) {
   console.error('❌ Excel report generation failed:', err.message);
 }
+

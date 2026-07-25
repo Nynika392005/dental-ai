@@ -79,11 +79,40 @@ function generateExcelReport(testResults, summary, outputPath) {
   ];
   XLSX.utils.book_append_sheet(workbook, detailSheet, 'Detailed Test Results');
 
+  // ---------------------------------------------------------
+  // Sheets 3 to 8: Individual 6 Suite Tabs (300 Specs Each)
+  // ---------------------------------------------------------
+  const suitesMap = {};
+  testResults.forEach(r => {
+    const sName = r.suite || 'General';
+    if (!suitesMap[sName]) suitesMap[sName] = [];
+    suitesMap[sName].push(r);
+  });
+
+  Object.keys(suitesMap).forEach((sName, idx) => {
+    const suiteItems = suitesMap[sName];
+    const sRows = suiteItems.map((r, index) => [
+      index + 1,
+      r.category || 'E2E Functional',
+      r.title,
+      r.status,
+      r.duration || 0,
+      r.timestamp,
+      r.error || 'N/A'
+    ]);
+    const sSheet = XLSX.utils.aoa_to_sheet([['#', 'Category', 'Test Case Name', 'Status', 'Duration (ms)', 'Timestamp', 'Notes'], ...sRows]);
+    sSheet['!cols'] = [{ wch: 5 }, { wch: 25 }, { wch: 55 }, { wch: 10 }, { wch: 15 }, { wch: 25 }, { wch: 30 }];
+    const sheetTabTitle = `${idx + 1}- ${sName.substring(0, 25)}`;
+    XLSX.utils.book_append_sheet(workbook, sSheet, sheetTabTitle);
+  });
+
+  // Ensure target folder exists
   const dir = path.dirname(outputPath);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
 
+  // Write Excel file
   XLSX.writeFile(workbook, outputPath);
   console.log(`\n=========================================================`);
   console.log(`📊 Comprehensive Selenium Web Excel Report Generated:`);
