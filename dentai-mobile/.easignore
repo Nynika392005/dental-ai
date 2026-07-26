@@ -11,6 +11,9 @@ ios/
 android/
 ios/**
 android/**
+local.properties
+**/local.properties
+
 
 # Ignore large testing files and binaries
 appium-tests/

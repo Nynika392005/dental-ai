@@ -42,9 +42,12 @@ app-example
 # generated native folders
 /ios
 /android
+local.properties
+**/local.properties
 
 # test binaries & reports
 appium-tests/bin/
 appium-tests/reports/
 *.apk
+
 
