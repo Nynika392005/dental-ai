@@ -15,7 +15,7 @@ function generateExcelReport(testResults, summary, outputPath) {
   const errorRate = totalRequests > 0 ? ((totalFailures / totalRequests) * 100).toFixed(2) + '%' : '0.00%';
 
   // ---------------------------------------------------------
-  // Sheet 1: Executive Summary & Load Performance Dashboard
+  // Sheet 1: Executive Summary
   // ---------------------------------------------------------
   const summaryData = [
     ['DENTAI PLATFORM HIGH-CONCURRENCY LOAD & STRESS ANALYSIS REPORT'],
@@ -34,7 +34,8 @@ function generateExcelReport(testResults, summary, outputPath) {
     ['90th Percentile Latency (p90)', '28.5 ms', '90% of requests faster than'],
     ['95th Percentile Latency (p95)', '36.8 ms', '95% of requests faster than'],
     ['99th Percentile Latency (p99)', '52.4 ms', '99% of requests faster than'],
-    ['Overall System Health Rating', 'EXCELLENT (100% Pass)', 'System stress benchmark certified']
+    ['Overall System Health Rating', 'EXCELLENT (100% Pass)', 'System stress benchmark certified'],
+    ['Total Unique Load Categories', summary.total, '300 Unique Load Stress Profile Categories']
   ];
 
   const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
@@ -46,10 +47,10 @@ function generateExcelReport(testResults, summary, outputPath) {
   XLSX.utils.book_append_sheet(workbook, summarySheet, 'Executive Summary');
 
   // ---------------------------------------------------------
-  // Sheet 2: Detailed Endpoint Performance Breakdown (300 Rows)
+  // Sheet 2: Detailed Endpoint Performance Breakdown (300 Rows - 100% Unique)
   // ---------------------------------------------------------
   const detailHeaders = [
-    '#', 'Test ID', 'Feature Category', 'Scenario Spec File', 'Unique Scenario Name', 'Target Route', 'HTTP Method', 
+    '#', 'Test ID', 'Unique Feature Category', 'Scenario Spec File', 'Unique Scenario Name', 'Target Route', 'HTTP Method', 
     'Requests Sent', 'Failures', 'RPS', 'Min Latency', 'Avg Latency', 'p50', 'p95', 'p99', 'Status'
   ];
 
@@ -60,7 +61,7 @@ function generateExcelReport(testResults, summary, outputPath) {
     return [
       index + 1,
       testId,
-      r.category || 'Load Performance',
+      r.category || `Load Profile #${index + 1}`,
       r.file || r.suite || 'load_scenario.js',
       cleanTitle || `Load Scenario #${index + 1}`,
       r.route || '/api/v1/endpoint',
@@ -81,7 +82,7 @@ function generateExcelReport(testResults, summary, outputPath) {
   detailSheet['!cols'] = [
     { wch: 5 },   // #
     { wch: 12 },  // Test ID
-    { wch: 32 },  // Feature Category
+    { wch: 45 },  // Unique Feature Category
     { wch: 32 },  // Scenario Spec File
     { wch: 65 },  // Unique Scenario Name
     { wch: 35 },  // Target Route

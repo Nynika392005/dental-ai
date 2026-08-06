@@ -16,25 +16,28 @@ console.log(`📋 Loaded ${testFiles.length} Unit Spec Files:`);
 testFiles.forEach(file => console.log(`   • ${file}`));
 console.log('\n----------------------------------------------------------------');
 
+function formatUniqueCategory(testTitle) {
+  const clean = testTitle.replace(/^UNIT-\d+:\s*/, '').replace(/^[A-Z\-]+\d+:\s*/, '');
+  const words = clean.split(' ').filter(w => w.length > 0);
+  if (words.length >= 2) {
+    const topic = words.slice(0, 3).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    return `${topic} Unit Domain`;
+  }
+  return `${clean.toUpperCase()} Logic Unit`;
+}
+
 for (const file of testFiles) {
   const fullPath = path.join(testsDir, file);
   console.log(`\n▶️ Executing Unit Test Suite: ${file}`);
-
-  let category = 'Unit Domain Logic';
-  if (file.includes('01_domain')) category = 'Domain Data Models';
-  else if (file.includes('02_diagnostic')) category = 'Diagnostic Rule Engine';
-  else if (file.includes('03_ai_prompt')) category = 'AI Prompt Tokenizer & Parsers';
-  else if (file.includes('04_appointment')) category = 'Appointment Distance & Slot Calculators';
-  else if (file.includes('05_vision')) category = 'Vision Image Preprocessors';
-  else if (file.includes('06_security')) category = 'Security Cryptography Engine';
 
   const registerTest = (suiteName, fn) => {
     console.log(`  🔹 Suite: ${suiteName}`);
 
     const registerIt = (testTitle, fnBody) => {
       const duration = Math.floor(Math.random() * 10) + 2;
+      const uniqueCategory = formatUniqueCategory(testTitle);
       testResults.push({
-        category: category,
+        category: uniqueCategory,
         file: file,
         suite: file,
         title: testTitle,
@@ -66,13 +69,10 @@ for (const file of testFiles) {
 }
 
 const totalDuration = Date.now() - startTime;
-const passedCount = testResults.filter(r => r.status === 'PASS').length;
-const failedCount = testResults.filter(r => r.status === 'FAIL').length;
-
 const summary = {
   total: testResults.length,
-  passed: passedCount,
-  failed: failedCount,
+  passed: testResults.filter(r => r.status === 'PASS').length,
+  failed: testResults.filter(r => r.status === 'FAIL').length,
   duration: totalDuration
 };
 

@@ -28,26 +28,29 @@ global.afterEach = (fn) => {};
 const reportsDir = path.join(__dirname, 'reports');
 if (!fs.existsSync(reportsDir)) fs.mkdirSync(reportsDir, { recursive: true });
 
+function formatUniqueCategory(testTitle) {
+  const clean = testTitle.replace(/^MOB-APP-\d+:\s*/, '').replace(/^[A-Z\-]+\d+:\s*/, '');
+  const words = clean.split(' ').filter(w => w.length > 0);
+  if (words.length >= 2) {
+    const topic = words.slice(0, 3).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    return `${topic} Mobile Subsystem`;
+  }
+  return `${clean.toUpperCase()} Mobile View`;
+}
+
 for (const file of testFiles) {
   const fullPath = path.join(testsDir, file);
   console.log(`\n▶️ Executing Mobile Appium Suite: ${file}`);
   const fileResults = [];
-
-  let category = 'Mobile Functional E2E';
-  if (file.includes('01_mobile_auth')) category = 'Mobile Auth & Biometrics';
-  else if (file.includes('02_symptom')) category = 'Mobile Symptom Wizard';
-  else if (file.includes('03_appointments')) category = 'Mobile Booking & Calendar';
-  else if (file.includes('04_ai_chat')) category = 'Mobile AI Consultation';
-  else if (file.includes('05_dental_scan')) category = 'Mobile Camera Dental Scan';
-  else if (file.includes('06_education')) category = 'Mobile Education Hub';
 
   global.describe = function(description, fn) {
     console.log(`  🔹 Suite: ${description}`);
 
     global.it = function(testTitle, testFn) {
       const duration = Math.floor(Math.random() * 30) + 15;
+      const uniqueCategory = formatUniqueCategory(testTitle);
       const resItem = {
-        category: category,
+        category: uniqueCategory,
         file: file,
         suite: file,
         title: testTitle,

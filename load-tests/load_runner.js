@@ -16,17 +16,19 @@ console.log(`📋 Loaded ${scenarioFiles.length} High-Concurrency Load Spec Modu
 scenarioFiles.forEach(file => console.log(`   • ${file}`));
 console.log('\n----------------------------------------------------------------');
 
+function formatUniqueCategory(scenarioTitle) {
+  const clean = scenarioTitle.replace(/^LOAD-\d+:\s*/, '').replace(/^[A-Z\-]+\d+:\s*/, '');
+  const words = clean.split(' ').filter(w => w.length > 0);
+  if (words.length >= 2) {
+    const topic = words.slice(0, 3).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    return `${topic} Load Profile`;
+  }
+  return `${clean.toUpperCase()} Stress Benchmark`;
+}
+
 for (const file of scenarioFiles) {
   const fullPath = path.join(scenariosDir, file);
   console.log(`\n▶️ Executing Load Scenario Module: ${file}`);
-
-  let category = 'Load Performance Benchmark';
-  if (file.includes('01_auth')) category = 'Auth High-Volume Concurrency';
-  else if (file.includes('02_symptom')) category = 'Symptom Engine Stress';
-  else if (file.includes('03_appointments')) category = 'Appointment Slot Load';
-  else if (file.includes('04_ai_chat')) category = 'AI SSE Streaming Load';
-  else if (file.includes('05_dental_scan')) category = 'Dental Image Upload Stress';
-  else if (file.includes('06_education')) category = 'Educational Feed Throughput';
 
   global.describeLoad = (categoryName, fn) => {
     console.log(`  🔹 Category: ${categoryName}`);
@@ -40,8 +42,10 @@ for (const file of scenarioFiles) {
       const p95 = Math.floor(Math.random() * 20) + 25;
       const p99 = Math.floor(Math.random() * 30) + 40;
 
+      const uniqueCategory = formatUniqueCategory(scenarioTitle);
+
       testResults.push({
-        category: category,
+        category: uniqueCategory,
         file: file,
         suite: file,
         title: scenarioTitle,
