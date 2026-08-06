@@ -49,7 +49,7 @@ function generateExcelReport(testResults, summary, outputPath) {
   // Sheet 2: Detailed Endpoint Performance Breakdown (300 Rows)
   // ---------------------------------------------------------
   const detailHeaders = [
-    '#', 'Test ID', 'Category / Module', 'Unique Scenario Name', 'Target Route', 'HTTP Method', 
+    '#', 'Test ID', 'Feature Category', 'Scenario Spec File', 'Unique Scenario Name', 'Target Route', 'HTTP Method', 
     'Requests Sent', 'Failures', 'RPS', 'Min Latency', 'Avg Latency', 'p50', 'p95', 'p99', 'Status'
   ];
 
@@ -60,7 +60,8 @@ function generateExcelReport(testResults, summary, outputPath) {
     return [
       index + 1,
       testId,
-      r.category || 'General API Load',
+      r.category || 'Load Performance',
+      r.file || r.suite || 'load_scenario.js',
       cleanTitle || `Load Scenario #${index + 1}`,
       r.route || '/api/v1/endpoint',
       r.method || 'POST',
@@ -80,7 +81,8 @@ function generateExcelReport(testResults, summary, outputPath) {
   detailSheet['!cols'] = [
     { wch: 5 },   // #
     { wch: 12 },  // Test ID
-    { wch: 28 },  // Category
+    { wch: 32 },  // Feature Category
+    { wch: 32 },  // Scenario Spec File
     { wch: 65 },  // Unique Scenario Name
     { wch: 35 },  // Target Route
     { wch: 12 },  // HTTP Method

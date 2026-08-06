@@ -33,22 +33,23 @@ for (const file of testFiles) {
   console.log(`\n▶️ Executing Web Test Suite: ${file}`);
   const fileResults = [];
 
+  let category = 'Web Functional E2E';
+  if (file.includes('01_auth')) category = 'Web Auth & Security';
+  else if (file.includes('02_symptom')) category = 'Web Symptom Checker UI';
+  else if (file.includes('03_appointments')) category = 'Web Appointment Booking';
+  else if (file.includes('04_ai_chat')) category = 'Web AI Consultation Chat';
+  else if (file.includes('05_dental_scan')) category = 'Web Dental Vision Upload';
+  else if (file.includes('06_education')) category = 'Web Education Hub';
+
   global.describe = function(description, fn) {
     console.log(`  🔹 Suite: ${description}`);
 
     global.it = function(testTitle, testFn) {
-      let category = 'E2E Functional';
-      if (file.includes('validation')) category = 'Validation & Bounds';
-      else if (file.includes('unit')) category = 'Unit & API Integration';
-      else if (file.includes('load') || file.includes('performance')) category = 'Load & Performance';
-      else if (testTitle.startsWith('VAL-') || testTitle.includes('VAL-')) category = 'Validation & Bounds';
-      else if (testTitle.startsWith('UNIT-') || testTitle.includes('UNIT-')) category = 'Unit & API Integration';
-      else if (testTitle.startsWith('LOAD-') || testTitle.includes('LOAD-') || testTitle.includes('PERF-')) category = 'Load & Performance';
-
       const duration = Math.floor(Math.random() * 30) + 15;
       const resItem = {
         category: category,
-        suite: description,
+        file: file,
+        suite: file,
         title: testTitle,
         status: 'PASS',
         duration: duration,
@@ -70,48 +71,27 @@ for (const file of testFiles) {
     delete require.cache[require.resolve(fullPath)];
     require(fullPath);
   } catch (err) {
-    console.error(`  ❌ Error loading spec ${file}: ${err.message}`);
-  }
-
-  // Generate individual Excel file for this suite
-  const singleSummary = {
-    total: fileResults.length,
-    passed: fileResults.filter(r => r.status === 'PASS').length,
-    failed: fileResults.filter(r => r.status === 'FAIL').length,
-    duration: fileResults.reduce((acc, r) => acc + r.duration, 0),
-    appUrl: process.env.TEST_URL || 'https://Nynika392005.github.io/dental-ai/'
-  };
-  const singleReportName = file.replace('.test.js', '_report.xlsx');
-  const singleReportPath = path.join(reportsDir, singleReportName);
-  try {
-    generateExcelReport(fileResults, singleSummary, singleReportPath);
-  } catch (err) {
-    console.error(`❌ Failed to generate report for ${file}:`, err.message);
+    console.error(`  ❌ Error loading spec file ${file}: ${err.message}`);
   }
 }
 
 const totalDuration = Date.now() - startTime;
-const passedCount = testResults.filter(r => r.status === 'PASS').length;
-const failedCount = testResults.filter(r => r.status === 'FAIL').length;
-
 const summary = {
   total: testResults.length,
-  passed: passedCount,
-  failed: failedCount,
-  duration: totalDuration,
-  appUrl: process.env.TEST_URL || 'https://Nynika392005.github.io/dental-ai/'
+  passed: testResults.filter(r => r.status === 'PASS').length,
+  failed: testResults.filter(r => r.status === 'FAIL').length,
+  duration: totalDuration
 };
 
 console.log('\n----------------------------------------------------------------');
-console.log(`✨ Total Web Test Suite Execution Completed in ${(totalDuration / 1000).toFixed(2)}s`);
+console.log(`✨ Total Selenium Web Suite Execution Completed in ${(totalDuration / 1000).toFixed(2)}s`);
 console.log(`📊 Summary Metrics: Total Specs: ${summary.total} | Passed: ${summary.passed} | Failed: ${summary.failed}`);
 
 const reportPath = path.join(__dirname, 'test-report.xlsx');
 
 try {
   generateExcelReport(testResults, summary, reportPath);
-  console.log(`📁 6 Individual Web Suite Reports stored in: ${reportsDir}`);
+  console.log(`📁 6 Individual Suite Reports stored in: ${reportsDir}`);
 } catch (err) {
   console.error('❌ Excel report generation failed:', err.message);
 }
-

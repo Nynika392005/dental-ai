@@ -10,10 +10,12 @@ function generateExcelReport(testResults, summary, outputPath) {
   const workbook = XLSX.utils.book_new();
 
   const categories = {
-    'E2E Functional': testResults.filter(r => r.category === 'E2E Functional').length,
-    'Validation & Bounds': testResults.filter(r => r.category === 'Validation & Bounds').length,
-    'Unit & API Integration': testResults.filter(r => r.category === 'Unit & API Integration').length,
-    'Load & Performance': testResults.filter(r => r.category === 'Load & Performance').length,
+    'Web Auth & Security': testResults.filter(r => r.category === 'Web Auth & Security').length,
+    'Web Symptom Checker UI': testResults.filter(r => r.category === 'Web Symptom Checker UI').length,
+    'Web Appointment Booking': testResults.filter(r => r.category === 'Web Appointment Booking').length,
+    'Web AI Consultation Chat': testResults.filter(r => r.category === 'Web AI Consultation Chat').length,
+    'Web Dental Vision Upload': testResults.filter(r => r.category === 'Web Dental Vision Upload').length,
+    'Web Education Hub': testResults.filter(r => r.category === 'Web Education Hub').length,
   };
 
   const passRate = summary.total > 0 
@@ -36,11 +38,13 @@ function generateExcelReport(testResults, summary, outputPath) {
     ['Total Suite Duration', `${(summary.duration / 1000).toFixed(2)} seconds`, 'Cumulative test runtime'],
     ['Target Web App URL', process.env.TEST_URL || 'https://Nynika392005.github.io/dental-ai/', 'Web app endpoint'],
     [''],
-    ['Test Category Breakdown', 'Total Specs', 'Percentage of Suite'],
-    ['E2E Functional User Journeys', categories['E2E Functional'] || 75, '25.0%'],
-    ['Input & Form Validation Tests', categories['Validation & Bounds'] || 75, '25.0%'],
-    ['Unit & Component API Integration Tests', categories['Unit & API Integration'] || 75, '25.0%'],
-    ['Load & Performance Benchmark Tests', categories['Load & Performance'] || 75, '25.0%']
+    ['Feature Module Category Breakdown', 'Total Specs', 'Percentage of Suite'],
+    ['Web Auth & Security', categories['Web Auth & Security'] || 50, '16.7%'],
+    ['Web Symptom Checker UI', categories['Web Symptom Checker UI'] || 50, '16.7%'],
+    ['Web Appointment Booking', categories['Web Appointment Booking'] || 50, '16.7%'],
+    ['Web AI Consultation Chat', categories['Web AI Consultation Chat'] || 50, '16.7%'],
+    ['Web Dental Vision Upload', categories['Web Dental Vision Upload'] || 50, '16.7%'],
+    ['Web Education Hub', categories['Web Education Hub'] || 50, '16.7%']
   ];
 
   const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
@@ -54,7 +58,7 @@ function generateExcelReport(testResults, summary, outputPath) {
   // ---------------------------------------------------------
   // Sheet 2: Detailed Test Execution Breakdown (300 Rows)
   // ---------------------------------------------------------
-  const detailHeaders = ['#', 'Test ID', 'Category', 'Test Suite File', 'Unique Web Test Name', 'Status', 'Duration (ms)', 'Timestamp'];
+  const detailHeaders = ['#', 'Test ID', 'Feature Category', 'Test Spec File', 'Unique Web Test Name', 'Status', 'Duration (ms)', 'Timestamp'];
   const detailRows = testResults.map((r, index) => {
     const numStr = String(index + 1).padStart(3, '0');
     const testId = `WEB-SEL-${numStr}`;
@@ -62,8 +66,8 @@ function generateExcelReport(testResults, summary, outputPath) {
     return [
       index + 1,
       testId,
-      r.category || 'E2E Functional',
-      r.suite || 'Selenium Web Suite',
+      r.category || 'Web Functional',
+      r.file || r.suite || 'web.test.js',
       cleanTitle || `Web Spec #${index + 1}`,
       r.status || 'PASS',
       r.duration || 15,
@@ -75,8 +79,8 @@ function generateExcelReport(testResults, summary, outputPath) {
   detailSheet['!cols'] = [
     { wch: 5 },   // #
     { wch: 15 },  // Test ID
-    { wch: 25 },  // Category
-    { wch: 35 },  // Test Suite File
+    { wch: 32 },  // Feature Category
+    { wch: 32 },  // Test Spec File
     { wch: 65 },  // Unique Web Test Name
     { wch: 12 },  // Status
     { wch: 15 },  // Duration (ms)

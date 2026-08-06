@@ -20,6 +20,14 @@ for (const file of scenarioFiles) {
   const fullPath = path.join(scenariosDir, file);
   console.log(`\n▶️ Executing Load Scenario Module: ${file}`);
 
+  let category = 'Load Performance Benchmark';
+  if (file.includes('01_auth')) category = 'Auth High-Volume Concurrency';
+  else if (file.includes('02_symptom')) category = 'Symptom Engine Stress';
+  else if (file.includes('03_appointments')) category = 'Appointment Slot Load';
+  else if (file.includes('04_ai_chat')) category = 'AI SSE Streaming Load';
+  else if (file.includes('05_dental_scan')) category = 'Dental Image Upload Stress';
+  else if (file.includes('06_education')) category = 'Educational Feed Throughput';
+
   global.describeLoad = (categoryName, fn) => {
     console.log(`  🔹 Category: ${categoryName}`);
 
@@ -33,7 +41,9 @@ for (const file of scenarioFiles) {
       const p99 = Math.floor(Math.random() * 30) + 40;
 
       testResults.push({
-        category: categoryName,
+        category: category,
+        file: file,
+        suite: file,
         title: scenarioTitle,
         route: route,
         method: method,
@@ -65,13 +75,10 @@ for (const file of scenarioFiles) {
 }
 
 const totalDuration = Date.now() - startTime;
-const passedCount = testResults.filter(r => r.status === 'PASS').length;
-const failedCount = testResults.filter(r => r.status === 'FAIL').length;
-
 const summary = {
   total: testResults.length,
-  passed: passedCount,
-  failed: failedCount,
+  passed: testResults.filter(r => r.status === 'PASS').length,
+  failed: testResults.filter(r => r.status === 'FAIL').length,
   duration: totalDuration
 };
 

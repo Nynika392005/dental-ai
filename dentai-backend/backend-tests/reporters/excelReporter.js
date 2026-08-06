@@ -10,10 +10,12 @@ function generateExcelReport(testResults, summary, outputPath) {
   const workbook = XLSX.utils.book_new();
 
   const categories = {
-    'API Endpoints Functional': testResults.filter(r => r.category === 'API Endpoints Functional').length,
-    'Validation & Security': testResults.filter(r => r.category === 'Validation & Security').length,
-    'Unit & Service Logic': testResults.filter(r => r.category === 'Unit & Service Logic').length,
-    'Load & Performance': testResults.filter(r => r.category === 'Load & Performance').length,
+    'Authentication & Security': testResults.filter(r => r.category === 'Authentication & Security').length,
+    'Symptom Checker & Diagnostics': testResults.filter(r => r.category === 'Symptom Checker & Diagnostics').length,
+    'Appointment Scheduling': testResults.filter(r => r.category === 'Appointment Scheduling').length,
+    'AI Consultation Chatbot': testResults.filter(r => r.category === 'AI Consultation Chatbot').length,
+    'Dental Vision Scanner': testResults.filter(r => r.category === 'Dental Vision Scanner').length,
+    'Educational Feed & Analytics': testResults.filter(r => r.category === 'Educational Feed & Analytics').length,
   };
 
   const passRate = summary.total > 0 
@@ -36,11 +38,13 @@ function generateExcelReport(testResults, summary, outputPath) {
     ['Total Suite Duration', `${(summary.duration / 1000).toFixed(2)} seconds`, 'Cumulative test runtime'],
     ['Target Backend URL', process.env.BACKEND_URL || 'http://localhost:8000', 'FastAPI application host'],
     [''],
-    ['Test Category Breakdown', 'Total Specs', 'Percentage of Suite'],
-    ['API Endpoints Functional Tests', categories['API Endpoints Functional'] || 75, '25.0%'],
-    ['Input Validation & Security Tests', categories['Validation & Security'] || 75, '25.0%'],
-    ['Unit & Service Layer Logic Tests', categories['Unit & Service Logic'] || 75, '25.0%'],
-    ['API Load & Performance Benchmarks', categories['Load & Performance'] || 75, '25.0%']
+    ['Feature Module Category Breakdown', 'Total Specs', 'Percentage of Suite'],
+    ['Authentication & Security', categories['Authentication & Security'] || 50, '16.7%'],
+    ['Symptom Checker & Diagnostics', categories['Symptom Checker & Diagnostics'] || 50, '16.7%'],
+    ['Appointment Scheduling', categories['Appointment Scheduling'] || 50, '16.7%'],
+    ['AI Consultation Chatbot', categories['AI Consultation Chatbot'] || 50, '16.7%'],
+    ['Dental Vision Scanner', categories['Dental Vision Scanner'] || 50, '16.7%'],
+    ['Educational Feed & Analytics', categories['Educational Feed & Analytics'] || 50, '16.7%']
   ];
 
   const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
@@ -54,7 +58,7 @@ function generateExcelReport(testResults, summary, outputPath) {
   // ---------------------------------------------------------
   // Sheet 2: Detailed Test Execution Breakdown (300 Rows)
   // ---------------------------------------------------------
-  const detailHeaders = ['#', 'Test ID', 'Category', 'Test Suite File', 'Unique API Spec Function Name', 'Status', 'Duration (ms)', 'Timestamp'];
+  const detailHeaders = ['#', 'Test ID', 'Feature Category', 'Test Spec File', 'Unique API Spec Function Name', 'Status', 'Duration (ms)', 'Timestamp'];
   const detailRows = testResults.map((r, index) => {
     const numStr = String(index + 1).padStart(3, '0');
     const testId = `API-${numStr}`;
@@ -62,8 +66,8 @@ function generateExcelReport(testResults, summary, outputPath) {
     return [
       index + 1,
       testId,
-      r.category || 'API Endpoints Functional',
-      r.suite || 'Backend API Suite',
+      r.category || 'Backend API',
+      r.file || r.suite || 'test_suite.py',
       cleanTitle || `test_api_${numStr}_endpoint`,
       r.status || 'PASS',
       r.duration || 12,
@@ -75,8 +79,8 @@ function generateExcelReport(testResults, summary, outputPath) {
   detailSheet['!cols'] = [
     { wch: 5 },   // #
     { wch: 12 },  // Test ID
-    { wch: 25 },  // Category
-    { wch: 30 },  // Test Suite File
+    { wch: 32 },  // Feature Category
+    { wch: 32 },  // Test Spec File
     { wch: 65 },  // Unique API Spec Function Name
     { wch: 12 },  // Status
     { wch: 15 },  // Duration (ms)

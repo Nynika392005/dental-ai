@@ -21,9 +21,16 @@ if (!fs.existsSync(reportsDir)) fs.mkdirSync(reportsDir, { recursive: true });
 
 for (const file of testFiles) {
   const fullPath = path.join(testsDir, file);
-  const suiteName = file.replace('.py', '').replace('test_', '').toUpperCase();
   console.log(`\n▶️ Executing Backend Spec File: ${file}`);
   const fileResults = [];
+
+  let category = 'Backend API';
+  if (file.includes('01_auth')) category = 'Authentication & Security';
+  else if (file.includes('02_symptom')) category = 'Symptom Checker & Diagnostics';
+  else if (file.includes('03_appointment')) category = 'Appointment Scheduling';
+  else if (file.includes('04_ai_chat')) category = 'AI Consultation Chatbot';
+  else if (file.includes('05_dental_scan')) category = 'Dental Vision Scanner';
+  else if (file.includes('06_education')) category = 'Educational Feed & Analytics';
 
   const fileContent = fs.readFileSync(fullPath, 'utf8');
   const testMatches = fileContent.match(/def test_[a-zA-Z0-9_]+/g) || [];
@@ -33,19 +40,12 @@ for (const file of testFiles) {
   testMatches.forEach(testFn => {
     const rawName = testFn.replace('def ', '');
     const formattedTitle = rawName.replace(/_/g, ' ').replace(/^test /, '').toUpperCase();
-
-    let category = 'API Endpoints Functional';
-    if (file.includes('validation') || file.includes('security')) category = 'Validation & Security';
-    else if (file.includes('unit') || file.includes('service')) category = 'Unit & Service Logic';
-    else if (file.includes('load') || file.includes('performance')) category = 'Load & Performance';
-    else if (rawName.includes('val_') || rawName.includes('validation')) category = 'Validation & Security';
-    else if (rawName.includes('unit_')) category = 'Unit & Service Logic';
-    else if (rawName.includes('perf_') || rawName.includes('load_')) category = 'Load & Performance';
-
     const duration = Math.floor(Math.random() * 20) + 10;
+
     const resItem = {
       category: category,
-      suite: suiteName,
+      file: file,
+      suite: file,
       title: `${rawName}: ${formattedTitle}`,
       status: 'PASS',
       duration: duration,
@@ -56,7 +56,6 @@ for (const file of testFiles) {
     fileResults.push(resItem);
   });
 
-  // Generate individual Excel file for this suite
   const singleSummary = {
     total: fileResults.length,
     passed: fileResults.filter(r => r.status === 'PASS').length,
@@ -74,13 +73,10 @@ for (const file of testFiles) {
 }
 
 const totalDuration = Date.now() - startTime;
-const passedCount = testResults.filter(r => r.status === 'PASS').length;
-const failedCount = testResults.filter(r => r.status === 'FAIL').length;
-
 const summary = {
   total: testResults.length,
-  passed: passedCount,
-  failed: failedCount,
+  passed: testResults.filter(r => r.status === 'PASS').length,
+  failed: testResults.filter(r => r.status === 'FAIL').length,
   duration: totalDuration,
   backendUrl: process.env.BACKEND_URL || 'http://localhost:8000'
 };
@@ -97,4 +93,3 @@ try {
 } catch (err) {
   console.error('❌ Excel report generation failed:', err.message);
 }
-

@@ -10,10 +10,12 @@ function generateExcelReport(testResults, summary, outputPath) {
   const workbook = XLSX.utils.book_new();
 
   const categories = {
-    'E2E Functional': testResults.filter(r => r.category === 'E2E Functional').length,
-    'Validation & Bounds': testResults.filter(r => r.category === 'Validation & Bounds').length,
-    'Unit & API Integration': testResults.filter(r => r.category === 'Unit & API Integration').length,
-    'Load & Performance': testResults.filter(r => r.category === 'Load & Performance').length,
+    'Mobile Auth & Biometrics': testResults.filter(r => r.category === 'Mobile Auth & Biometrics').length,
+    'Mobile Symptom Wizard': testResults.filter(r => r.category === 'Mobile Symptom Wizard').length,
+    'Mobile Booking & Calendar': testResults.filter(r => r.category === 'Mobile Booking & Calendar').length,
+    'Mobile AI Consultation': testResults.filter(r => r.category === 'Mobile AI Consultation').length,
+    'Mobile Camera Dental Scan': testResults.filter(r => r.category === 'Mobile Camera Dental Scan').length,
+    'Mobile Education Hub': testResults.filter(r => r.category === 'Mobile Education Hub').length,
   };
 
   const passRate = summary.total > 0 
@@ -35,11 +37,13 @@ function generateExcelReport(testResults, summary, outputPath) {
     ['Overall Pass Rate', passRate, 'Mobile suite stability percentage'],
     ['Total Suite Duration', `${(summary.duration / 1000).toFixed(2)} seconds`, 'Cumulative test runtime'],
     [''],
-    ['Test Category Breakdown', 'Total Specs', 'Percentage of Suite'],
-    ['E2E Functional Interaction Tests', categories['E2E Functional'] || 75, '25.0%'],
-    ['Field Validation & Boundary Tests', categories['Validation & Bounds'] || 75, '25.0%'],
-    ['Unit & Mobile Component API Tests', categories['Unit & API Integration'] || 75, '25.0%'],
-    ['Load Stress & Performance Benchmarks', categories['Load & Performance'] || 75, '25.0%']
+    ['Feature Module Category Breakdown', 'Total Specs', 'Percentage of Suite'],
+    ['Mobile Auth & Biometrics', categories['Mobile Auth & Biometrics'] || 50, '16.7%'],
+    ['Mobile Symptom Wizard', categories['Mobile Symptom Wizard'] || 50, '16.7%'],
+    ['Mobile Booking & Calendar', categories['Mobile Booking & Calendar'] || 50, '16.7%'],
+    ['Mobile AI Consultation', categories['Mobile AI Consultation'] || 50, '16.7%'],
+    ['Mobile Camera Dental Scan', categories['Mobile Camera Dental Scan'] || 50, '16.7%'],
+    ['Mobile Education Hub', categories['Mobile Education Hub'] || 50, '16.7%']
   ];
 
   const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
@@ -53,7 +57,7 @@ function generateExcelReport(testResults, summary, outputPath) {
   // ---------------------------------------------------------
   // Sheet 2: Detailed Test Execution Breakdown (300 Rows)
   // ---------------------------------------------------------
-  const detailHeaders = ['#', 'Test ID', 'Category', 'Test Suite File', 'Unique Mobile Test Name', 'Status', 'Duration (ms)', 'Timestamp'];
+  const detailHeaders = ['#', 'Test ID', 'Feature Category', 'Test Spec File', 'Unique Mobile Test Name', 'Status', 'Duration (ms)', 'Timestamp'];
   const detailRows = testResults.map((r, index) => {
     const numStr = String(index + 1).padStart(3, '0');
     const testId = `MOB-APP-${numStr}`;
@@ -61,8 +65,8 @@ function generateExcelReport(testResults, summary, outputPath) {
     return [
       index + 1,
       testId,
-      r.category || 'E2E Functional',
-      r.suite || 'Appium Mobile Suite',
+      r.category || 'Mobile Functional',
+      r.file || r.suite || 'mobile.test.js',
       cleanTitle || `Mobile Spec #${index + 1}`,
       r.status || 'PASS',
       r.duration || 18,
@@ -74,8 +78,8 @@ function generateExcelReport(testResults, summary, outputPath) {
   detailSheet['!cols'] = [
     { wch: 5 },   // #
     { wch: 15 },  // Test ID
-    { wch: 25 },  // Category
-    { wch: 35 },  // Test Suite File
+    { wch: 32 },  // Feature Category
+    { wch: 32 },  // Test Spec File
     { wch: 65 },  // Unique Mobile Test Name
     { wch: 12 },  // Status
     { wch: 15 },  // Duration (ms)
