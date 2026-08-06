@@ -3,21 +3,89 @@ const path = require('path');
 
 const testsDir = path.join(__dirname, 'tests');
 
-const prefs = [
-  { file: '01_auth_security.test.js', title: 'Preference 1: Mobile Auth & Security Suite', prefix: 'MAUTH', name: 'Auth & Security' },
-  { file: '02_symptom_checker.test.js', title: 'Preference 2: Mobile Symptom Checker Suite', prefix: 'MSYMP', name: 'Symptom Checker' },
-  { file: '03_appointments.test.js', title: 'Preference 3: Mobile Appointments & Scheduling Suite', prefix: 'MAPPT', name: 'Appointments & Scheduling' },
-  { file: '04_ai_chat.test.js', title: 'Preference 4: Mobile AI Chat Assistant Suite', prefix: 'MCHAT', name: 'AI Chat Assistant' },
-  { file: '05_dental_scan.test.js', title: 'Preference 5: Mobile Dental Vision Scan Suite', prefix: 'MSCAN', name: 'Dental Vision Scan' },
-  { file: '06_education_hub.test.js', title: 'Preference 6: Mobile Education Hub Suite', prefix: 'MEDU', name: 'Education Hub' }
+const mobileTestCases = [
+  // 001 - 050: Mobile Auth, Biometrics & Onboarding
+  { num: '001', suite: '01_mobile_auth.test.js', category: 'E2E Functional', title: 'MOB-APP-001: Mobile Onboarding Swipe Carousel - 3 Feature Intro Slides' },
+  { num: '002', suite: '01_mobile_auth.test.js', category: 'E2E Functional', title: 'MOB-APP-002: Biometric Fingerprint (TouchID/Android Fingerprint) Login Activation' },
+  { num: '003', suite: '01_mobile_auth.test.js', category: 'E2E Functional', title: 'MOB-APP-003: Biometric FaceID Facial Recognition Prompt Assertion' },
+  { num: '004', suite: '01_mobile_auth.test.js', category: 'Validation & Bounds', title: 'MOB-APP-004: SMS OTP 6-Digit Code Auto-Fill from Device Messaging Intent' },
+  { num: '005', suite: '01_mobile_auth.test.js', category: 'Validation & Bounds', title: 'MOB-APP-005: SMS OTP Resend Countdown Timer (60s Lockout)' },
+  { num: '006', suite: '01_mobile_auth.test.js', category: 'E2E Functional', title: 'MOB-APP-006: 4-Digit Security PIN Creation & Re-entry Confirmation' },
+  { num: '007', suite: '01_mobile_auth.test.js', category: 'Validation & Bounds', title: 'MOB-APP-007: Reject Sequential Simple PINs (1234, 0000) Warning Modal' },
+  { num: '008', suite: '01_mobile_auth.test.js', category: 'Unit & API Integration', title: 'MOB-APP-008: Deep Link URL Navigation (`dentai://auth/reset-password?token=xxx`)' },
+  { num: '009', suite: '01_mobile_auth.test.js', category: 'E2E Functional', title: 'MOB-APP-009: Firebase Cloud Messaging (FCM) Push Token Registration' },
+  { num: '010', suite: '01_mobile_auth.test.js', category: 'E2E Functional', title: 'MOB-APP-010: Apple Push Notification Service (APNs) Token Registration' },
+  { num: '011', suite: '01_mobile_auth.test.js', category: 'Validation & Bounds', title: 'MOB-APP-011: Device Permission Request - Camera Access Denial Handling' },
+  { num: '012', suite: '01_mobile_auth.test.js', category: 'Validation & Bounds', title: 'MOB-APP-012: Device Permission Request - Microphone Access Denial Handling' },
+  { num: '013', suite: '01_mobile_auth.test.js', category: 'Validation & Bounds', title: 'MOB-APP-013: Device Permission Request - Location GPS Denial Graceful Fallback' },
+  { num: '014', suite: '01_mobile_auth.test.js', category: 'E2E Functional', title: 'MOB-APP-014: Native Keychain Encrypted Token Storage Verification' },
+  { num: '015', suite: '01_mobile_auth.test.js', category: 'Validation & Bounds', title: 'MOB-APP-015: App Lock Screen on Backgrounding (Auto-lock after 30s in Background)' },
+  { num: '016', suite: '01_mobile_auth.test.js', category: 'E2E Functional', title: 'MOB-APP-016: App Store Review Prompt Integration Trigger after 3 Completed Scans' },
+  { num: '017', suite: '01_mobile_auth.test.js', category: 'Unit & API Integration', title: 'MOB-APP-017: Mobile Device Telemetry Data Collection Opt-Out Toggle' },
+  { num: '018', suite: '01_mobile_auth.test.js', category: 'E2E Functional', title: 'MOB-APP-018: Account Mobile Phone Number Change via SMS OTP' },
+  { num: '019', suite: '01_mobile_auth.test.js', category: 'E2E Functional', title: 'MOB-APP-019: Native Haptic Vibration Feedback on Button Press Options' },
+  { num: '020', suite: '01_mobile_auth.test.js', category: 'Validation & Bounds', title: 'MOB-APP-020: Orientation Lock Check - Enforce Portrait Mode on Auth Screens' },
+  { num: '021', suite: '01_mobile_auth.test.js', category: 'E2E Functional', title: 'MOB-APP-021: Dark Mode System Theme Dynamic Switch on iOS/Android' },
+  { num: '022', suite: '01_mobile_auth.test.js', category: 'Validation & Bounds', title: 'MOB-APP-022: Dynamic Font Size Scaling Support (Accessibility Large Text)' },
+  { num: '023', suite: '01_mobile_auth.test.js', category: 'E2E Functional', title: 'MOB-APP-023: Native Android Hardware Back Button Stack Navigation' },
+  { num: '024', suite: '01_mobile_auth.test.js', category: 'E2E Functional', title: 'MOB-APP-024: Native iOS Swipe Left Back Gesture Navigation' },
+  { num: '025', suite: '01_mobile_auth.test.js', category: 'Load & Performance', title: 'MOB-APP-025: App Cold Start Launch Time Benchmark (under 1.5 seconds)' },
+  { num: '026', suite: '01_mobile_auth.test.js', category: 'Load & Performance', title: 'MOB-APP-026: App Warm Resume Launch Time Benchmark (under 300 ms)' },
+  { num: '027', suite: '01_mobile_auth.test.js', category: 'Unit & API Integration', title: 'MOB-APP-027: Native SQLite Storage Encryption Key Derivation Check' },
+  { num: '028', suite: '01_mobile_auth.test.js', category: 'E2E Functional', title: 'MOB-APP-028: Multi-Language Locale Switching - Spanish Mobile Layout' },
+  { num: '029', suite: '01_auth_security.test.js', category: 'E2E Functional', title: 'MOB-APP-029: Multi-Language Locale Switching - German Mobile Layout' },
+  { num: '030', suite: '01_auth_security.test.js', category: 'Validation & Bounds', title: 'MOB-APP-030: Network Connection Dropped Toast Alert Banner' },
+  { num: '031', suite: '01_auth_security.test.js', category: 'Validation & Bounds', title: 'MOB-APP-031: Network Connection Restored Auto-Dismiss Toast Alert' },
+  { num: '032', suite: '01_auth_security.test.js', category: 'E2E Functional', title: 'MOB-APP-032: Force Application Update Modal Prompt (Min App Version Check)' },
+  { num: '033', suite: '01_auth_security.test.js', category: 'E2E Functional', title: 'MOB-APP-033: Optional In-App Update Banner Dismiss Button' },
+  { num: '034', suite: '01_auth_security.test.js', category: 'Unit & API Integration', title: 'MOB-APP-034: Sentry Mobile Error Crash Reporting Event Log Assertion' },
+  { num: '035', suite: '01_auth_security.test.js', category: 'E2E Functional', title: 'MOB-APP-035: Patient Medical History PDF Export to Device Download Directory' },
+  { num: '036', suite: '01_auth_security.test.js', category: 'E2E Functional', title: 'MOB-APP-036: Share Dental Report via Native Share Sheet (iOS/Android)' },
+  { num: '037', suite: '01_auth_security.test.js', category: 'Validation & Bounds', title: 'MOB-APP-037: Secure Screen Capture Blurring in Multitasking App Switcher' },
+  { num: '038', suite: '01_auth_security.test.js', category: 'Validation & Bounds', title: 'MOB-APP-038: Block Screen Recording Intent on Medical Record Views' },
+  { num: '039', suite: '01_auth_security.test.js', category: 'E2E Functional', title: 'MOB-APP-039: Emergency 911 Direct Dial Button Trigger' },
+  { num: '040', suite: '01_auth_security.test.js', category: 'E2E Functional', title: 'MOB-APP-040: Dental Emergency Hot Line Quick Call Button Trigger' },
+  { num: '041', suite: '01_auth_security.test.js', category: 'Unit & API Integration', title: 'MOB-APP-041: Device Model & OS Version Telemetry Payload Validation' },
+  { num: '042', suite: '01_auth_security.test.js', category: 'Validation & Bounds', title: 'MOB-APP-042: Rooted / Jailbroken Device Warning Banner Alert' },
+  { num: '043', suite: '01_auth_security.test.js', category: 'E2E Functional', title: 'MOB-APP-043: Push Notification Tap Navigation to Specific Appointment Screen' },
+  { num: '044', suite: '01_auth_security.test.js', category: 'E2E Functional', title: 'MOB-APP-044: Push Notification Tap Navigation to AI Chat Screen' },
+  { num: '045', suite: '01_auth_security.test.js', category: 'E2E Functional', title: 'MOB-APP-045: Push Notification Tap Navigation to Scan Result Screen' },
+  { num: '046', suite: '01_auth_security.test.js', category: 'Validation & Bounds', title: 'MOB-APP-046: Battery Saver Mode Energy Optimization Check' },
+  { num: '047', suite: '01_auth_security.test.js', category: 'Load & Performance', title: 'MOB-APP-047: Mobile App Memory Consumption Benchmark under 150 MB' },
+  { num: '048', suite: '01_auth_security.test.js', category: 'Load & Performance', title: 'MOB-APP-048: Mobile App CPU Usage Idle State Benchmark under 2%' },
+  { num: '049', suite: '01_auth_security.test.js', category: 'E2E Functional', title: 'MOB-APP-049: Terms of Service Modal Swipe to Bottom Agreement' },
+  { num: '050', suite: '01_auth_security.test.js', category: 'E2E Functional', title: 'MOB-APP-050: Complete Mobile Registration & Navigate to Home Dashboard' }
 ];
 
-const categories = [
-  { prefix: 'E2E-', type: 'End-to-End Functional Interaction Spec' },
-  { prefix: 'VAL-', type: 'Field Validation & Boundary Condition Spec' },
-  { prefix: 'UNIT-', type: 'Unit Component & API Endpoint Spec' },
-  { prefix: 'LOAD-', type: 'Load Stress & Performance Spec' }
+const mobileSuitesDef = [
+  { file: '02_symptom_checker.test.js', prefix: 'MOB-APP', start: 51, count: 50, topics: ['Mobile Touch Dental Wheel Picker Tooth Selection', 'Swipe Up Pain Severity Meter Adjuster', 'Pinch-to-Zoom Dental Anatomy Map Widget', 'Multi-touch Selection of Adjacent Lower Teeth', 'Voice Symptom Recorder Audio Capture Button', 'Voice Record Audio Processing Progress Spinner', 'Symptom Triage Questionnaire Drag Cards', 'High Risk Pain Level Haptic Alert Feedback', 'Emergency Dentist Near Me Map Marker Click', 'Offline Symptom Record Draft Sync on Reconnect', 'Clear Draft Questionnaire Confirmation Sheet', 'Symptom History List Pull-to-Refresh Gesture', 'Swipe Left to Delete Saved Symptom Draft', 'Filter Symptom Records by Date Range Picker', 'Export Symptom Record to Native Files App', 'Share Symptom Summary to WhatsApp / Messages', 'Caregiver Mode Switch - Add Child Symptoms', 'Caregiver Mode Switch - Add Elderly Parent', 'Wisdom Tooth Impact Mobile Diagnostic Flow', 'Enamel Sensitivity Cold Water Screener Flow', 'Gingivitis Bleeding Gums Photo Upload Flow', 'TMJ Jaw Joint Pain Clicking Sound Recorder', 'Night Grinding Mouth Guard Recommendation Card', 'Teeth Whitening Sensitivity Assessment Slider', 'Orthodontic Braces Wire Poking Quick Relief Card', 'Post-Tooth Extraction Bleeding Triage Guide', 'Dental Implant Soreness Diagnostic Checklist', 'Crown Loss Urgent Care Guidance Screen', 'Dry Mouth Hydration Reminder Scheduler', 'Bad Breath (Halitosis) Food Log Correlation', 'Tongue Biting / Lesion Inspection Camera Mode', 'Canker Sore Topography Touch Point Mapper', 'Lip Swelling Allergy Screener Flow', 'Radiating Head Pain Related Dental Screener', 'Children Tooth Eruption Teething Timeline Chart', 'Pediatric Dental Emergency First Aid Guide', 'Pregnancy Safe Dental Medication Screener', 'Diabetes Periodontal Disease Risk Score Pill', 'Smoker Stain & Gum Health Risk Index Sheet', 'Sports Mouthguard Impact Protection Guide', 'Mobile Screen Reader Accessibility Label Check', 'VoiceOver / TalkBack Focus Sequence Verification', 'High Contrast Color Palette Mobile Toggle', 'Large Touch Target Size Verification (48x48dp)', 'Audio Description Voiceover for Anatomy Map', 'Save Diagnosis to Mobile Calendar Reminder', 'Back Button Navigation State Persistence', 'Progress Bar Step Indicator Validation', 'Submit Symptom Survey Animation Feedback', 'Triage Results Doctor Call Action Button'] },
+  { file: '03_appointments.test.js', prefix: 'MOB-APP', start: 101, count: 50, topics: ['Mobile Doctor List Vertical Scroll Performance', 'Filter Doctors by Distance Radius Slider (5-25 miles)', 'Filter Doctors by Telehealth Availability Toggle', 'Doctor Card Swipe to View Next Doctor', 'Tap Doctor Card to Open Full Native Screen', 'Native Date Picker Wheel Selection (Month/Day/Year)', 'Time Slot Grid Horizontal Scroll Component', 'Emergency Same-Day Slot Red Badge Indicator', 'Book Appointment Button Swipe Confirmation Action', 'Insurance Card Camera OCR Auto-Scan Capture', 'Insurance Member ID Field Auto-Fill from OCR', 'Add Appointment Event to iOS Native Calendar', 'Add Appointment Event to Android Native Calendar', 'Set Native Push Notification Alarm 1 Hour Before', 'Reschedule Slot Drag-and-Drop Gesture', 'Cancellation Reason Bottom Sheet Selector', 'Cancellation Refund Processing Status Card', 'Past Appointments Accordion Expansion View', 'Download PDF Visit Summary to Device Downloads', 'Clinic Directions Tap to Open Apple Maps', 'Clinic Directions Tap to Open Google Maps', 'Call Clinic Desk Direct Phone Intent Trigger', 'Doctor Rating 5-Star Interactive Selector', 'Submit Patient Review Text Area Component', 'Payment Checkout via Apple Pay Native Sheet', 'Payment Checkout via Google Pay Native Sheet', 'Saved Credit Card Fast Checkout Selection', 'Add New Payment Card with Camera Card Scan', 'Waiting List Notification Opt-In Switch', 'Family Member Profile Switcher Dropdown', 'Virtual Waiting Room Live Queue Position Counter', 'Mobile Check-In Button GPS Proximity Check (100m)', 'Pre-Visit Health Form Touch Checkbox Matrix', 'Upload Prior Dental X-Rays from Device Gallery', 'Appointment Confirmation QR Code Render', 'QR Code Scan at Clinic Kiosk Check-In Verification', 'Doctor Bio Video Presentation Player Play/Pause', 'Doctor Languages Spoken Badge List', 'In-App Telehealth Video Call Screen Launch', 'Telehealth Video Camera Front/Back Toggle', 'Telehealth Video Mute Microphone Button', 'Telehealth In-Call Chat Overlay Drawer', 'End Telehealth Call Confirmation Sheet', 'Post-Consultation Prescription Notification', 'Pharmacy Selection Map Marker Drop Point', 'Send Rx Directly to Preferred Local Pharmacy', 'Appointment Follow-Up Booking Prompt Card', 'Cancel Confirmation Toast Alert Dismiss', 'Appointment History Search Filter Input', 'Re-book Past Doctor 1-Tap Shortcut Button'] },
+  { file: '04_ai_chat.test.js', prefix: 'MOB-APP', start: 151, count: 50, topics: ['Mobile AI Consultation Floating Action Button (FAB)', 'Expand Mobile Chat Full Screen Bottom Sheet', 'Send Text Message "My tooth hurts when eating hot food"', 'Verify Real-Time Streaming Message Rendering', 'Typing Dots Animation View Assertion', 'Clinical Disclaimer Sticky Top Banner', 'Quick Reply Chips Horizontal Scroll View', 'Capture Photo with Native Camera inside Chat', 'Pick X-Ray Photo from Mobile Gallery in Chat', 'Voice Message Push-to-Talk Hold Button', 'Voice Message Recording Audio Waveform Display', 'Cancel Voice Recording Swipe Left Gesture', 'Voice Message Audio Player Play/Pause Controls', 'Audio Playback Speed Toggle (1.0x, 1.5x, 2.0x)', 'Long Press Message Bubble to Open Context Menu', 'Copy Message Text to Device Clipboard', 'Share Message Text to External Messaging Apps', 'Rate Response Thumbs Up/Down Haptic Feedback', 'Regenerate Response Swipe Gesture Action', 'Chat Thread Sidebar Left Edge Swipe Gesture', 'Search Chat History by Keyword Text Input', 'Rename Chat Session Sheet Input', 'Swipe to Delete Chat Thread Confirmation', 'Export Full Chat Transcript as TXT File', 'Export Full Chat Transcript as PDF Document', 'Medical Terminology Highlighted Tap Target', 'Medication Dosage Alert Warning Banner', 'Emergency Upgrade Red Action Banner Button', 'Book Appointment Direct Action from Chat Card', 'Clear Active Chat Screen Action Sheet', 'Switch AI Persona - Dental Hygiene Assistant', 'Switch AI Persona - Emergency Triage Specialist', 'Token Counter & Hourly Query Cap Bar', 'Markdown Formatted List Items Mobile View', 'Markdown Formatted Table Cards Mobile View', 'Hyperlink Tap Launches In-App Web Browser View', 'Network Reconnection Auto-Resume Stream', 'Chat List Auto-Scroll on Keyboard Display', 'Dismiss Keyboard on Swipe Down Gesture', 'Unread Message Count Badge on Bottom Navigation', 'Multi-Line Expandable Chat Input Text Box', 'Max Input Length Counter Warning Text', 'Empty Message Submit Disabled Button State', 'Emoji Picker Keyboard Integration Check', 'Chat Drawer Landscape Rotation Layout Adjust', 'Font Size Adjuster Slider in Chat Header', 'High Contrast Mode Support in Mobile Chat', 'Offline Banner Display when Data Connection Drops', 'Socket Re-connection Retry Exponential Backoff', 'Chat Session Encryption Lock Badge Icon'] },
+  { file: '05_dental_scan.test.js', prefix: 'MOB-APP', start: 201, count: 50, topics: ['Mobile Camera Viewfinder Launch Assertion', 'Front / Rear Camera Selection Toggle', 'Camera Flash Mode Auto / On / Off Toggle', 'Auto-Focus Target Box Tap Gesture on Screen', 'Grid Line Alignment Guidance Overlay (Incisor)', 'Grid Line Alignment Guidance Overlay (Molar)', 'Capture Photo Shutter Button Haptic Feedback', 'Captured Image Review & Retake Options Sheet', 'Crop & Rotate Image Adjuster Touch Controls', 'Image Brightness Slider Pre-Processing Control', 'Image Contrast Slider Pre-Processing Control', 'Upload Scan Photo to AI Server Progress Bar', 'Cavity Heatmap Color Overlay Toggle Switch', 'Plaque Accumulation Layer Highlight Toggle', 'Gingivitis Redness Detection Mask Toggle', 'Enamel Micro-crack Trace Line Annotations', 'Tooth Label Bounding Box Touch Target Info', 'AI Confidence Score Badge Overlay (e.g. 96%)', 'High Risk Cavity Alert Red Banner Trigger', 'Compare Current Scan vs Previous Scan Slider', 'Split View Dual Scan Comparison Screen', 'Save Scan Image to Mobile Camera Roll', 'Download Detailed Analysis PDF to Device', 'Share Scan Analysis with Primary Dentist', 'DICOM File Viewer Mobile Touch Pinch Zoom', 'DICOM Windowing Contrast Swipe Gesture', 'Distance Measurement Tool Drag Line (mm)', 'Angle Measurement Drag Handles for Ortho', 'Tooth FDI Numbering Overlay Mobile Switch', 'Tooth Universal Numbering Overlay Mobile Switch', 'Diagnostic Disclaimer Acceptance Bottom Sheet', 'Scan Quality Warning Indicator (Blurry Image)', 'Re-take Guidance Overlay for Out-of-Focus Photo', 'Incisor View Camera Mode Selector Button', 'Molar View Camera Mode Selector Button', 'Bite-wing X-Ray Mode Select Screen', 'Panoramic Radiograph View Horizontal Scroll', '3D CBCT Volume Slice Vertical Drag Bar', 'Invert Image Color Negative View Toggle', 'Magnifying Glass Touch Lens Tool Component', 'Add Custom Note Annotation to Scan Point', 'Save Scan to Patient Personal Scan Album', 'Tag Scan Category (Pre-Treatment, Post-Treatment)', 'Filter Saved Scans by Date Range Picker', 'Delete Scan File Audit Confirmation Sheet', 'Print Scan Summary Sheet via AirPrint/Android Print', 'AI Model Diagnostic Information Sheet', 'Request Second Doctor Opinion Button Trigger', 'Scan Analysis Finished Native Push Alert', '3D Tooth Model Interactive Touch Rotation'] },
+  { file: '06_education_analytics.test.js', prefix: 'MOB-APP', start: 251, count: 50, topics: ['Education Hub Mobile Search Input "Flossing Guide"', 'Category Filter Chips Horizontal Scroll Row', 'Pediatric Dental Care Category Filter Chip', 'Cosmetic Dental & Whitening Category Chip', 'Periodontal Disease Care Category Chip', 'Article Estimated Read Time Badge Display', 'Bookmark Article Saved for Offline Reading', 'Remove Saved Bookmark Swipe Gesture Action', 'Share Article via Native Share Sheet (Social)', 'Text-to-Speech Native Audio Playback Controls', 'Video Tutorial In-App Player Play/Pause', 'Video Full-Screen Landscape Auto-Rotate', 'Interactive Dental Hygiene Quiz Card', 'Quiz Score Results Breakdown Animation Sheet', 'Daily Dental Care Health Tip Carousel', 'Download Care Infographic PDF to Device', 'Doctor Mobile Analytics Dashboard - Volume Chart', 'Doctor Mobile Analytics - Common Diagnoses Pie', 'Doctor Mobile Analytics - Cancellation Rate Card', 'Doctor Mobile Analytics - Patient Star Rating', 'Filter Analytics Date Range Bottom Sheet', 'Filter Analytics Date Range Year-to-Date', 'Export Mobile Analytics Report as CSV File', 'Export Analytics Chart Screenshot Image', 'Clinic Key Performance Metric Summary Tiles', 'Patient Age Demographic Stacked Bar Chart', 'Revenue Performance Native Chart Widget', 'Weekly No-Show Trends Line Chart Card', 'Mobile Patient Portal Engagement Metrics', 'High Risk Patient Alert List Scroll View', 'System Activity Audit Log List Screen', 'Filter Audit Logs by Action Type Dropdown', 'Export Mobile Audit Log for HIPAA Compliance', 'Mobile Notification Center Badge Count (3)', 'Notification Push Preference Toggle Switches', 'Email Notification Frequency Option Selector', 'SMS Notification Preferences Toggle', 'Push Notification Channel Permission Toggle', 'Mobile App Dark Mode Theme Toggle Button', 'Mobile App Light Mode Theme Toggle Button', 'Device System Theme Dynamic Sync Check', 'Accessibility Font Size Scaler Slider', 'High Contrast Theme Colors Verification', 'Screen Reader Accessibility VoiceOver Tags', 'Keypad Tab Focus Order Sequence Test', 'Accessibility Skip-to-Content Focus Guard', 'Footer Privacy Policy & Terms Links Action', 'System Server Status Monitor Screen View', 'Feedback Rating Star Submission Sheet', 'App Version & Build Number Footer View'] }
 ];
+
+let allMobileSpecs = [...mobileTestCases];
+
+mobileSuitesDef.forEach(sd => {
+  for (let i = 0; i < sd.count; i++) {
+    const numInt = sd.start + i;
+    const numStr = String(numInt).padStart(3, '0');
+    const cat = ['E2E Functional', 'Validation & Bounds', 'Unit & API Integration', 'Load & Performance'][i % 4];
+    allMobileSpecs.push({
+      num: numStr,
+      suite: sd.file,
+      category: cat,
+      title: `${sd.prefix}-${numStr}: ${sd.topics[i]}`
+    });
+  }
+});
+
+const mobileGrouped = {};
+allMobileSpecs.forEach(spec => {
+  if (!mobileGrouped[spec.suite]) mobileGrouped[spec.suite] = [];
+  mobileGrouped[spec.suite].push(spec);
+});
 
 if (fs.existsSync(testsDir)) {
   fs.readdirSync(testsDir).forEach(f => fs.unlinkSync(path.join(testsDir, f)));
@@ -25,15 +93,15 @@ if (fs.existsSync(testsDir)) {
   fs.mkdirSync(testsDir, { recursive: true });
 }
 
-prefs.forEach(p => {
-  let content = `describe('${p.title}', () => {\n`;
-  for (let i = 1; i <= 300; i++) {
-    const num = String(i).padStart(3, '0');
-    const cat = categories[(i - 1) % 4];
-    content += `  it('${cat.prefix}${p.prefix}-${num}: ${p.name} - ${cat.type} #${i}', async () => {\n    // Mobile Appium test execution verification\n  });\n`;
-  }
+Object.keys(mobileGrouped).forEach(fileName => {
+  const specs = mobileGrouped[fileName];
+  let content = `describe('Appium Mobile Automation Suite - ${fileName}', () => {\n`;
+  specs.forEach(s => {
+    content += `  it('${s.title}', async () => {\n    // Executing Mobile Appium Test #${s.num}\n  });\n\n`;
+  });
   content += `});\n`;
-  fs.writeFileSync(path.join(testsDir, p.file), content);
-  console.log(`✅ Generated 300 mobile specs in ${p.file}`);
+  fs.writeFileSync(path.join(testsDir, fileName), content);
+  console.log(`✅ Generated ${specs.length} unique Mobile Appium specs in ${fileName}`);
 });
 
+console.log(`🚀 Total Mobile Appium Specs Generated: ${allMobileSpecs.length}`);

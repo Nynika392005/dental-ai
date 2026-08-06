@@ -1,0 +1,13 @@
+{
+  "name": "dentai-unit-tests",
+  "version": "1.0.0",
+  "description": "DentAI 300 Unit Testing Suite and Excel Analysis Reporter",
+  "main": "test_runner.js",
+  "scripts": {
+    "test": "node test_runner.js",
+    "generate": "node generate_unit_tests.js"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}

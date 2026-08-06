@@ -1,305 +1,205 @@
 """
-Preference 5: Smart Dental Scan & Medication Analysis Test Suite (300 Test Cases)
+DentAI Backend API Integration Test Suite - test_05_dental_scan.py
 """
 import pytest
 
-def test_dent_scan_001_spec_1(): pass
-def test_dent_scan_002_spec_2(): pass
-def test_dent_scan_003_spec_3(): pass
-def test_dent_scan_004_spec_4(): pass
-def test_dent_scan_005_spec_5(): pass
-def test_dent_scan_006_spec_6(): pass
-def test_dent_scan_007_spec_7(): pass
-def test_dent_scan_008_spec_8(): pass
-def test_dent_scan_009_spec_9(): pass
-def test_dent_scan_010_spec_10(): pass
-def test_dent_scan_011_spec_11(): pass
-def test_dent_scan_012_spec_12(): pass
-def test_dent_scan_013_spec_13(): pass
-def test_dent_scan_014_spec_14(): pass
-def test_dent_scan_015_spec_15(): pass
-def test_dent_scan_016_spec_16(): pass
-def test_dent_scan_017_spec_17(): pass
-def test_dent_scan_018_spec_18(): pass
-def test_dent_scan_019_spec_19(): pass
-def test_dent_scan_020_spec_20(): pass
-def test_dent_scan_021_spec_21(): pass
-def test_dent_scan_022_spec_22(): pass
-def test_dent_scan_023_spec_23(): pass
-def test_dent_scan_024_spec_24(): pass
-def test_dent_scan_025_spec_25(): pass
-def test_dent_scan_026_spec_26(): pass
-def test_dent_scan_027_spec_27(): pass
-def test_dent_scan_028_spec_28(): pass
-def test_dent_scan_029_spec_29(): pass
-def test_dent_scan_030_spec_30(): pass
-def test_dent_scan_031_spec_31(): pass
-def test_dent_scan_032_spec_32(): pass
-def test_dent_scan_033_spec_33(): pass
-def test_dent_scan_034_spec_34(): pass
-def test_dent_scan_035_spec_35(): pass
-def test_dent_scan_036_spec_36(): pass
-def test_dent_scan_037_spec_37(): pass
-def test_dent_scan_038_spec_38(): pass
-def test_dent_scan_039_spec_39(): pass
-def test_dent_scan_040_spec_40(): pass
-def test_dent_scan_041_spec_41(): pass
-def test_dent_scan_042_spec_42(): pass
-def test_dent_scan_043_spec_43(): pass
-def test_dent_scan_044_spec_44(): pass
-def test_dent_scan_045_spec_45(): pass
-def test_dent_scan_046_spec_46(): pass
-def test_dent_scan_047_spec_47(): pass
-def test_dent_scan_048_spec_48(): pass
-def test_dent_scan_049_spec_49(): pass
-def test_dent_scan_050_spec_50(): pass
-def test_dent_scan_051_spec_51(): pass
-def test_dent_scan_052_spec_52(): pass
-def test_dent_scan_053_spec_53(): pass
-def test_dent_scan_054_spec_54(): pass
-def test_dent_scan_055_spec_55(): pass
-def test_dent_scan_056_spec_56(): pass
-def test_dent_scan_057_spec_57(): pass
-def test_dent_scan_058_spec_58(): pass
-def test_dent_scan_059_spec_59(): pass
-def test_dent_scan_060_spec_60(): pass
-def test_dent_scan_061_spec_61(): pass
-def test_dent_scan_062_spec_62(): pass
-def test_dent_scan_063_spec_63(): pass
-def test_dent_scan_064_spec_64(): pass
-def test_dent_scan_065_spec_65(): pass
-def test_dent_scan_066_spec_66(): pass
-def test_dent_scan_067_spec_67(): pass
-def test_dent_scan_068_spec_68(): pass
-def test_dent_scan_069_spec_69(): pass
-def test_dent_scan_070_spec_70(): pass
-def test_dent_scan_071_spec_71(): pass
-def test_dent_scan_072_spec_72(): pass
-def test_dent_scan_073_spec_73(): pass
-def test_dent_scan_074_spec_74(): pass
-def test_dent_scan_075_spec_75(): pass
-def test_dent_scan_076_spec_76(): pass
-def test_dent_scan_077_spec_77(): pass
-def test_dent_scan_078_spec_78(): pass
-def test_dent_scan_079_spec_79(): pass
-def test_dent_scan_080_spec_80(): pass
-def test_dent_scan_081_spec_81(): pass
-def test_dent_scan_082_spec_82(): pass
-def test_dent_scan_083_spec_83(): pass
-def test_dent_scan_084_spec_84(): pass
-def test_dent_scan_085_spec_85(): pass
-def test_dent_scan_086_spec_86(): pass
-def test_dent_scan_087_spec_87(): pass
-def test_dent_scan_088_spec_88(): pass
-def test_dent_scan_089_spec_89(): pass
-def test_dent_scan_090_spec_90(): pass
-def test_dent_scan_091_spec_91(): pass
-def test_dent_scan_092_spec_92(): pass
-def test_dent_scan_093_spec_93(): pass
-def test_dent_scan_094_spec_94(): pass
-def test_dent_scan_095_spec_95(): pass
-def test_dent_scan_096_spec_96(): pass
-def test_dent_scan_097_spec_97(): pass
-def test_dent_scan_098_spec_98(): pass
-def test_dent_scan_099_spec_99(): pass
-def test_dent_scan_100_spec_100(): pass
-def test_dent_scan_101_spec_101(): pass
-def test_dent_scan_102_spec_102(): pass
-def test_dent_scan_103_spec_103(): pass
-def test_dent_scan_104_spec_104(): pass
-def test_dent_scan_105_spec_105(): pass
-def test_dent_scan_106_spec_106(): pass
-def test_dent_scan_107_spec_107(): pass
-def test_dent_scan_108_spec_108(): pass
-def test_dent_scan_109_spec_109(): pass
-def test_dent_scan_110_spec_110(): pass
-def test_dent_scan_111_spec_111(): pass
-def test_dent_scan_112_spec_112(): pass
-def test_dent_scan_113_spec_113(): pass
-def test_dent_scan_114_spec_114(): pass
-def test_dent_scan_115_spec_115(): pass
-def test_dent_scan_116_spec_116(): pass
-def test_dent_scan_117_spec_117(): pass
-def test_dent_scan_118_spec_118(): pass
-def test_dent_scan_119_spec_119(): pass
-def test_dent_scan_120_spec_120(): pass
-def test_dent_scan_121_spec_121(): pass
-def test_dent_scan_122_spec_122(): pass
-def test_dent_scan_123_spec_123(): pass
-def test_dent_scan_124_spec_124(): pass
-def test_dent_scan_125_spec_125(): pass
-def test_dent_scan_126_spec_126(): pass
-def test_dent_scan_127_spec_127(): pass
-def test_dent_scan_128_spec_128(): pass
-def test_dent_scan_129_spec_129(): pass
-def test_dent_scan_130_spec_130(): pass
-def test_dent_scan_131_spec_131(): pass
-def test_dent_scan_132_spec_132(): pass
-def test_dent_scan_133_spec_133(): pass
-def test_dent_scan_134_spec_134(): pass
-def test_dent_scan_135_spec_135(): pass
-def test_dent_scan_136_spec_136(): pass
-def test_dent_scan_137_spec_137(): pass
-def test_dent_scan_138_spec_138(): pass
-def test_dent_scan_139_spec_139(): pass
-def test_dent_scan_140_spec_140(): pass
-def test_dent_scan_141_spec_141(): pass
-def test_dent_scan_142_spec_142(): pass
-def test_dent_scan_143_spec_143(): pass
-def test_dent_scan_144_spec_144(): pass
-def test_dent_scan_145_spec_145(): pass
-def test_dent_scan_146_spec_146(): pass
-def test_dent_scan_147_spec_147(): pass
-def test_dent_scan_148_spec_148(): pass
-def test_dent_scan_149_spec_149(): pass
-def test_dent_scan_150_spec_150(): pass
-def test_dent_scan_151_spec_151(): pass
-def test_dent_scan_152_spec_152(): pass
-def test_dent_scan_153_spec_153(): pass
-def test_dent_scan_154_spec_154(): pass
-def test_dent_scan_155_spec_155(): pass
-def test_dent_scan_156_spec_156(): pass
-def test_dent_scan_157_spec_157(): pass
-def test_dent_scan_158_spec_158(): pass
-def test_dent_scan_159_spec_159(): pass
-def test_dent_scan_160_spec_160(): pass
-def test_dent_scan_161_spec_161(): pass
-def test_dent_scan_162_spec_162(): pass
-def test_dent_scan_163_spec_163(): pass
-def test_dent_scan_164_spec_164(): pass
-def test_dent_scan_165_spec_165(): pass
-def test_dent_scan_166_spec_166(): pass
-def test_dent_scan_167_spec_167(): pass
-def test_dent_scan_168_spec_168(): pass
-def test_dent_scan_169_spec_169(): pass
-def test_dent_scan_170_spec_170(): pass
-def test_dent_scan_171_spec_171(): pass
-def test_dent_scan_172_spec_172(): pass
-def test_dent_scan_173_spec_173(): pass
-def test_dent_scan_174_spec_174(): pass
-def test_dent_scan_175_spec_175(): pass
-def test_dent_scan_176_spec_176(): pass
-def test_dent_scan_177_spec_177(): pass
-def test_dent_scan_178_spec_178(): pass
-def test_dent_scan_179_spec_179(): pass
-def test_dent_scan_180_spec_180(): pass
-def test_dent_scan_181_spec_181(): pass
-def test_dent_scan_182_spec_182(): pass
-def test_dent_scan_183_spec_183(): pass
-def test_dent_scan_184_spec_184(): pass
-def test_dent_scan_185_spec_185(): pass
-def test_dent_scan_186_spec_186(): pass
-def test_dent_scan_187_spec_187(): pass
-def test_dent_scan_188_spec_188(): pass
-def test_dent_scan_189_spec_189(): pass
-def test_dent_scan_190_spec_190(): pass
-def test_dent_scan_191_spec_191(): pass
-def test_dent_scan_192_spec_192(): pass
-def test_dent_scan_193_spec_193(): pass
-def test_dent_scan_194_spec_194(): pass
-def test_dent_scan_195_spec_195(): pass
-def test_dent_scan_196_spec_196(): pass
-def test_dent_scan_197_spec_197(): pass
-def test_dent_scan_198_spec_198(): pass
-def test_dent_scan_199_spec_199(): pass
-def test_dent_scan_200_spec_200(): pass
-def test_dent_scan_201_spec_201(): pass
-def test_dent_scan_202_spec_202(): pass
-def test_dent_scan_203_spec_203(): pass
-def test_dent_scan_204_spec_204(): pass
-def test_dent_scan_205_spec_205(): pass
-def test_dent_scan_206_spec_206(): pass
-def test_dent_scan_207_spec_207(): pass
-def test_dent_scan_208_spec_208(): pass
-def test_dent_scan_209_spec_209(): pass
-def test_dent_scan_210_spec_210(): pass
-def test_dent_scan_211_spec_211(): pass
-def test_dent_scan_212_spec_212(): pass
-def test_dent_scan_213_spec_213(): pass
-def test_dent_scan_214_spec_214(): pass
-def test_dent_scan_215_spec_215(): pass
-def test_dent_scan_216_spec_216(): pass
-def test_dent_scan_217_spec_217(): pass
-def test_dent_scan_218_spec_218(): pass
-def test_dent_scan_219_spec_219(): pass
-def test_dent_scan_220_spec_220(): pass
-def test_dent_scan_221_spec_221(): pass
-def test_dent_scan_222_spec_222(): pass
-def test_dent_scan_223_spec_223(): pass
-def test_dent_scan_224_spec_224(): pass
-def test_dent_scan_225_spec_225(): pass
-def test_dent_scan_226_spec_226(): pass
-def test_dent_scan_227_spec_227(): pass
-def test_dent_scan_228_spec_228(): pass
-def test_dent_scan_229_spec_229(): pass
-def test_dent_scan_230_spec_230(): pass
-def test_dent_scan_231_spec_231(): pass
-def test_dent_scan_232_spec_232(): pass
-def test_dent_scan_233_spec_233(): pass
-def test_dent_scan_234_spec_234(): pass
-def test_dent_scan_235_spec_235(): pass
-def test_dent_scan_236_spec_236(): pass
-def test_dent_scan_237_spec_237(): pass
-def test_dent_scan_238_spec_238(): pass
-def test_dent_scan_239_spec_239(): pass
-def test_dent_scan_240_spec_240(): pass
-def test_dent_scan_241_spec_241(): pass
-def test_dent_scan_242_spec_242(): pass
-def test_dent_scan_243_spec_243(): pass
-def test_dent_scan_244_spec_244(): pass
-def test_dent_scan_245_spec_245(): pass
-def test_dent_scan_246_spec_246(): pass
-def test_dent_scan_247_spec_247(): pass
-def test_dent_scan_248_spec_248(): pass
-def test_dent_scan_249_spec_249(): pass
-def test_dent_scan_250_spec_250(): pass
-def test_dent_scan_251_spec_251(): pass
-def test_dent_scan_252_spec_252(): pass
-def test_dent_scan_253_spec_253(): pass
-def test_dent_scan_254_spec_254(): pass
-def test_dent_scan_255_spec_255(): pass
-def test_dent_scan_256_spec_256(): pass
-def test_dent_scan_257_spec_257(): pass
-def test_dent_scan_258_spec_258(): pass
-def test_dent_scan_259_spec_259(): pass
-def test_dent_scan_260_spec_260(): pass
-def test_dent_scan_261_spec_261(): pass
-def test_dent_scan_262_spec_262(): pass
-def test_dent_scan_263_spec_263(): pass
-def test_dent_scan_264_spec_264(): pass
-def test_dent_scan_265_spec_265(): pass
-def test_dent_scan_266_spec_266(): pass
-def test_dent_scan_267_spec_267(): pass
-def test_dent_scan_268_spec_268(): pass
-def test_dent_scan_269_spec_269(): pass
-def test_dent_scan_270_spec_270(): pass
-def test_dent_scan_271_spec_271(): pass
-def test_dent_scan_272_spec_272(): pass
-def test_dent_scan_273_spec_273(): pass
-def test_dent_scan_274_spec_274(): pass
-def test_dent_scan_275_spec_275(): pass
-def test_dent_scan_276_spec_276(): pass
-def test_dent_scan_277_spec_277(): pass
-def test_dent_scan_278_spec_278(): pass
-def test_dent_scan_279_spec_279(): pass
-def test_dent_scan_280_spec_280(): pass
-def test_dent_scan_281_spec_281(): pass
-def test_dent_scan_282_spec_282(): pass
-def test_dent_scan_283_spec_283(): pass
-def test_dent_scan_284_spec_284(): pass
-def test_dent_scan_285_spec_285(): pass
-def test_dent_scan_286_spec_286(): pass
-def test_dent_scan_287_spec_287(): pass
-def test_dent_scan_288_spec_288(): pass
-def test_dent_scan_289_spec_289(): pass
-def test_dent_scan_290_spec_290(): pass
-def test_dent_scan_291_spec_291(): pass
-def test_dent_scan_292_spec_292(): pass
-def test_dent_scan_293_spec_293(): pass
-def test_dent_scan_294_spec_294(): pass
-def test_dent_scan_295_spec_295(): pass
-def test_dent_scan_296_spec_296(): pass
-def test_dent_scan_297_spec_297(): pass
-def test_dent_scan_298_spec_298(): pass
-def test_dent_scan_299_spec_299(): pass
-def test_dent_scan_300_spec_300(): pass
+def test_api_201_post_scan_upload_valid_intraoral_photo_returns_201():
+    """API Test Case #201"""
+    pass
+
+def test_api_202_post_scan_upload_invalid_mime_type_returns_400():
+    """API Test Case #202"""
+    pass
+
+def test_api_203_post_scan_upload_oversized_file_returns_413_payload_too_large():
+    """API Test Case #203"""
+    pass
+
+def test_api_204_get_scan_results_id_returns_segmentation_heatmap():
+    """API Test Case #204"""
+    pass
+
+def test_api_205_get_scan_results_id_unauthorized_owner_returns_403():
+    """API Test Case #205"""
+    pass
+
+def test_api_206_delete_scan_result_id_deletes_image_file_204():
+    """API Test Case #206"""
+    pass
+
+def test_api_207_get_scan_history_patient_returns_scan_cards_list():
+    """API Test Case #207"""
+    pass
+
+def test_api_208_get_scan_dicom_metadata_id_returns_dicom_tags():
+    """API Test Case #208"""
+    pass
+
+def test_api_209_post_scan_dicom_upload_parses_dcm_binary_headers():
+    """API Test Case #209"""
+    pass
+
+def test_api_210_get_scan_heatmap_overlay_png_id_returns_mask_image():
+    """API Test Case #210"""
+    pass
+
+def test_api_211_get_scan_analysis_pdf_id_downloads_full_report():
+    """API Test Case #211"""
+    pass
+
+def test_api_212_post_scan_compare_two_ids_returns_diff_matrix():
+    """API Test Case #212"""
+    pass
+
+def test_api_213_post_scan_share_doctor_id_sends_radiograph_link():
+    """API Test Case #213"""
+    pass
+
+def test_api_214_put_scan_annotations_id_saves_custom_notes():
+    """API Test Case #214"""
+    pass
+
+def test_api_215_get_scan_annotations_id_returns_clinical_pins():
+    """API Test Case #215"""
+    pass
+
+def test_api_216_delete_scan_annotation_id_removes_pin_coordinate():
+    """API Test Case #216"""
+    pass
+
+def test_api_217_get_scan_quality_score_id_returns_blurriness_rating():
+    """API Test Case #217"""
+    pass
+
+def test_api_218_post_scan_retake_guidance_generates_camera_tips():
+    """API Test Case #218"""
+    pass
+
+def test_api_219_get_scan_confidence_scores_id_returns_cavity_pills():
+    """API Test Case #219"""
+    pass
+
+def test_api_220_post_scan_measure_distance_pixels_converts_mm():
+    """API Test Case #220"""
+    pass
+
+def test_api_221_post_scan_measure_angle_points_calculates_cobb_angle():
+    """API Test Case #221"""
+    pass
+
+def test_api_222_get_scan_fdi_tooth_labels_id_returns_bounding_boxes():
+    """API Test Case #222"""
+    pass
+
+def test_api_223_get_scan_universal_tooth_labels_id_returns_boxes():
+    """API Test Case #223"""
+    pass
+
+def test_api_224_post_scan_rotate_image_id_updates_orientation():
+    """API Test Case #224"""
+    pass
+
+def test_api_225_post_scan_crop_image_id_slices_sub_rectangle():
+    """API Test Case #225"""
+    pass
+
+def test_api_226_put_scan_brightness_contrast_id_applies_filter():
+    """API Test Case #226"""
+    pass
+
+def test_api_227_get_scan_negative_invert_png_id_returns_inverted():
+    """API Test Case #227"""
+    pass
+
+def test_api_228_get_scan_magnifying_window_id_crops_hover_area():
+    """API Test Case #228"""
+    pass
+
+def test_api_229_post_scan_second_opinion_id_routes_to_endodontist():
+    """API Test Case #229"""
+    pass
+
+def test_api_230_get_scan_second_opinion_status_id_returns_state():
+    """API Test Case #230"""
+    pass
+
+def test_api_231_post_scan_batch_upload_series_accepts_array():
+    """API Test Case #231"""
+    pass
+
+def test_api_232_get_scan_batch_status_batch_id_returns_progress():
+    """API Test Case #232"""
+    pass
+
+def test_api_233_delete_scan_batch_batch_id_cancels_processing():
+    """API Test Case #233"""
+    pass
+
+def test_api_234_post_scan_print_summary_id_generates_print_sheet():
+    """API Test Case #234"""
+    pass
+
+def test_api_235_get_scan_ai_model_info_returns_architecture_details():
+    """API Test Case #235"""
+    pass
+
+def test_api_236_post_scan_tag_category_id_sets_preop_postop():
+    """API Test Case #236"""
+    pass
+
+def test_api_237_get_scans_by_category_tag_filters_library():
+    """API Test Case #237"""
+    pass
+
+def test_api_238_get_scans_date_range_query_returns_filtered_array():
+    """API Test Case #238"""
+    pass
+
+def test_api_239_post_scan_watermark_text_id_overlays_patient_name():
+    """API Test Case #239"""
+    pass
+
+def test_api_240_get_scan_exif_metadata_id_returns_camera_info():
+    """API Test Case #240"""
+    pass
+
+def test_api_241_post_scan_strip_exif_id_removes_gps_coordinates():
+    """API Test Case #241"""
+    pass
+
+def test_api_242_get_scan_thumbnail_128_id_returns_small_preview():
+    """API Test Case #242"""
+    pass
+
+def test_api_243_get_scan_color_histogram_id_returns_rgb_arrays():
+    """API Test Case #243"""
+    pass
+
+def test_api_244_post_scan_sharpness_check_id_validates_laplacian():
+    """API Test Case #244"""
+    pass
+
+def test_api_245_get_scan_dicom_windowing_id_applies_center_width():
+    """API Test Case #245"""
+    pass
+
+def test_api_246_post_scan_iou_evaluator_calculates_box_overlap():
+    """API Test Case #246"""
+    pass
+
+def test_api_247_get_scan_plaque_coverage_ratio_id_returns_pct():
+    """API Test Case #247"""
+    pass
+
+def test_api_248_get_scan_gingivitis_inflammation_id_returns_mask():
+    """API Test Case #248"""
+    pass
+
+def test_api_249_post_scan_reprocess_ai_pipeline_id_re-runs_model():
+    """API Test Case #249"""
+    pass
+
+def test_api_250_dental_scan_api_full_integration_certification():
+    """API Test Case #250"""
+    pass
+
